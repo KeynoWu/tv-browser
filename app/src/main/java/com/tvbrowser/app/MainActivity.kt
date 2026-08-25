@@ -88,7 +88,6 @@ class MainActivity : Activity(), RemoteActions {
         s.allowFileAccess = false // 禁止 file:// 本地文件读取（防局域网利用）
         s.setAllowContentAccess(false) // 禁止 content:// 内容访问
         s.setGeolocationEnabled(false) // 禁用定位
-        s.setSaveFormData(false) // 不保存表单数据
         s.setSupportZoom(false) // 禁用缩放（TV 遥控场景无意义）
         s.userAgentString = s.userAgentString + " TvBrowser/0.1"
 
@@ -106,7 +105,7 @@ class MainActivity : Activity(), RemoteActions {
             }
 
             // 兼容 API 21-22（旧签名）
-            @Suppress("DEPRECATION")
+            @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
             override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
                 if (view?.url == failingUrl) {
                     Toast.makeText(this@MainActivity, "加载失败: " + (description ?: ""), Toast.LENGTH_SHORT).show()
@@ -122,7 +121,7 @@ class MainActivity : Activity(), RemoteActions {
         }
 
         // 拦截下载：当前版本不做文件下载，提示用户
-        wv.setDownloadListener { _, url, _, _, _ ->
+        wv.setDownloadListener { _, _, _, _, _ ->
             Toast.makeText(this, "暂不支持文件下载", Toast.LENGTH_SHORT).show()
         }
 
@@ -141,10 +140,11 @@ class MainActivity : Activity(), RemoteActions {
 
             override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message?): Boolean {
                 // target=_blank / window.open：复用当前 WebView 打开
-                val transport = resultMsg?.obj as? WebView.WebViewTransport ?: return false
-                val wv = webView ?: return false
-                transport.webView = wv
-                resultMsg?.sendToTarget()
+                val msg = resultMsg ?: return false
+                val transport = msg.obj as? WebView.WebViewTransport ?: return false
+                val current = webView ?: return false
+                transport.webView = current
+                msg.sendToTarget()
                 return true
             }
         }
@@ -259,6 +259,7 @@ class MainActivity : Activity(), RemoteActions {
         }
     }
 
+    @Suppress("DEPRECATION") // freeMemory 在新 SDK 标记废弃但仍是官方建议的低内存释放方式
     override fun onLowMemory() {
         super.onLowMemory()
         webView?.freeMemory()
