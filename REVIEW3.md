@@ -76,3 +76,9 @@
 2. 控制页刷新后从 sessionStorage 恢复连接（无需重新扫码）
 3. S3 禁用缩放/定位对目标网站无副作用
 4. P1 缓存后资源更新需重装 APK（assets 打包内不变）
+
+### P4 ✅ QR 图片用后即弃（内存清理）— 补充
+- **问题**：qrBitmap 曾按 ip|token 永久缓存（512KB Bitmap 常驻、永不释放）。
+- **修复**：移除缓存字段，改为按需实时生成、用后即弃（Bitmap 随方法结束即可被 GC）；serveQr 中的临时 Bitmap/ByteArrayOutputStream 均为局部变量，请求结束即回收。
+- **成本**：仅电视主页加载 /qr.png 时生成，单次约几毫秒（setPixels 已优化），可忽略。
+- **验证**：grep 确认 qrCache 无残留；assembleDebug 零警告；verify.js 21/21。

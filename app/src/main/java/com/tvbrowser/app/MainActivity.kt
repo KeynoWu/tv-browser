@@ -35,10 +35,6 @@ class MainActivity : Activity(), RemoteActions {
     @Volatile private var canGoForward = false
     private var backKeyTime = 0L
 
-    // 二维码缓存（IP 或 token 变化时失效）
-    private var qrCacheKey: String? = null
-    private var qrCacheBitmap: Bitmap? = null
-
     // HTML5 视频全屏
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
@@ -406,13 +402,10 @@ class MainActivity : Activity(), RemoteActions {
     }
 
     override fun qrBitmap(): Bitmap? {
+        // 二维码按需实时生成、用后即弃（Bitmap 随方法结束即可被 GC，不常驻内存）
+        // 仅在电视主页加载 /qr.png 时触发，单次生成约几毫秒，成本可忽略
         val ip = NetUtil.getLocalIpAddress() ?: return null
-        val key = "$ip|$authToken"
-        if (key == qrCacheKey) return qrCacheBitmap
-        val bmp = QrUtil.generate(ServerConfig.controlUrl(ip, authToken), 512)
-        qrCacheKey = key
-        qrCacheBitmap = bmp
-        return bmp
+        return QrUtil.generate(ServerConfig.controlUrl(ip, authToken), 512)
     }
 
     override fun assets(): AssetManager = assets
