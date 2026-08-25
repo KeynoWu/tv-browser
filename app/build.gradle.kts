@@ -3,6 +3,14 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+import java.util.Properties
+
+// 从 local.properties 读取 release 签名配置（不提交 git）
+val keystoreProperties = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
 android {
     namespace = "com.tvbrowser.app"
     compileSdk = 34
@@ -15,9 +23,19 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(keystoreProperties.getProperty("RELEASE_STORE_FILE", "../tv-browser.jks"))
+            storePassword = keystoreProperties.getProperty("RELEASE_STORE_PASSWORD", "")
+            keyAlias = keystoreProperties.getProperty("RELEASE_KEY_ALIAS", "tvbrowser")
+            keyPassword = keystoreProperties.getProperty("RELEASE_KEY_PASSWORD", "")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

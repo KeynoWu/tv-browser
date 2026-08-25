@@ -411,7 +411,7 @@ class MainActivity : Activity(), RemoteActions {
             "title" to currentTitle,
             "canGoBack" to canGoBack,
             "canGoForward" to canGoForward,
-            "online" to true,
+            "online" to (webView != null),
             "ip" to (NetUtil.getLocalIpAddress() ?: ""),
             "port" to ServerConfig.PORT
         )
