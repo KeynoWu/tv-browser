@@ -3,8 +3,30 @@ package com.tvbrowser.app
 import java.net.Inet4Address
 import java.net.NetworkInterface
 
-/** 局域网 IP 获取（优先 Wi-Fi/以太网，跳过虚拟接口） */
+/**
+ * 局域网 IP 获取（优先 Wi-Fi/以太网，跳过虚拟接口）。
+ * 带 30 秒缓存：控制页 3 秒轮询 /api/status 时避免高频遍历 NetworkInterface。
+ */
 object NetUtil {
+
+    private const val CACHE_TTL_MS = 30_000L
+
+    @Volatile private var cachedIp: String? = null
+    @Volatile private var cachedAt: Long = 0L
+
+    fun getLocalIpAddress(): String? {
+        val now = System.currentTimeMillis()
+        val cached = cachedIp
+        if (cached != null && now - cachedAt < CACHE_TTL_MS) {
+            return cached
+        }
+        val fresh = resolve()
+        if (fresh != null) {
+            cachedIp = fresh
+            cachedAt = now
+        }
+        return fresh
+    }
 
     private fun priority(name: String): Int {
         val n = name.lowercase()
@@ -16,7 +38,7 @@ object NetUtil {
         }
     }
 
-    fun getLocalIpAddress(): String? {
+    private fun resolve(): String? {
         return try {
             val interfaces = NetworkInterface.getNetworkInterfaces()
                 ?.toList()

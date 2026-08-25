@@ -28,6 +28,7 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
         start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
     }
 
+    @Suppress("DEPRECATION")
     override fun serve(session: IHTTPSession): Response {
         val uri = session.uri
         return try {
@@ -66,6 +67,7 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
     }
 
     /** token 校验：请求头 X-Auth-Token 或查询参数 t */
+    @Suppress("DEPRECATION")
     private fun authorized(session: IHTTPSession): Boolean {
         val header = session.headers["x-auth-token"]
         if (header == token) return true
@@ -126,13 +128,17 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
         return newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8", json.toString())
     }
 
+    @Suppress("DEPRECATION")
     private fun handlePost(session: IHTTPSession, required: String, handler: (JSONObject) -> Unit): Response {
-        // body 大小限制，防恶意大请求
+        // body 大小限制，防恶意大请求（Content-Length 声明与实际字节数双重校验，防 chunked 绕过）
         val contentLength = session.headers["content-length"]?.toLongOrNull() ?: 0L
         if (contentLength > MAX_BODY_SIZE) {
             return newFixedLengthResponse(Response.Status.PAYLOAD_TOO_LARGE, "text/plain", "body too large")
         }
         val body = readBody(session)
+        if (body.toByteArray(Charsets.UTF_8).size > MAX_BODY_SIZE) {
+            return newFixedLengthResponse(Response.Status.PAYLOAD_TOO_LARGE, "text/plain", "body too large")
+        }
         if (body.isBlank()) {
             return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "empty body")
         }

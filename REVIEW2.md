@@ -105,3 +105,24 @@
 2. **评估**：A-1 mixedContentMode 收紧为 COMPATIBILITY_MODE（需实机验证播放）；A-2 token 轮换（可选）
 3. **顺手**：C-1 body 实际大小校验、C-2 手机 back 关工具栏、C-3 IP 缓存、D-1 getParms()
 4. **实机必测**：E-1 主页焦点、E-2 新窗口、E-3 触摸手感、E-4 全屏恢复
+
+---
+
+## 六、修复状态（2025-08-25 已执行）
+
+| 项 | 状态 | 修复内容 |
+|---|---|---|
+| B-1 verify /qr.png 语义 | ✅ | verify.js /qr.png 分支改为只校验 query（与 RemoteServer:42 一致） |
+| B-2 verify 覆盖 413 与 /control/ | ✅ | 新增 body>64KB→413 用例与 /control/style.css 用例；模拟服务器实现 413 检查（19/19 通过） |
+| C-1 CL 绕过 | ✅ | handlePost 在 readBody 后按实际字节数二次校验（>64KB→413），防 chunked 绕过 |
+| C-2 手机 back 关工具栏 | ✅ | handleRemoteKey("back") 先检查 toolbarVisible→hideToolbar |
+| C-3 IP 高频遍历 | ✅ | NetUtil 加 30 秒缓存（@Volatile 时间戳失效） |
+| C-4 鼠标长按 click 多发 | ✅ | mousedown 立即发送 + 连发；click 仅处理键盘激活（e.detail===0），触摸走 touchstart 路径 |
+| C-5 非 http(s) scheme | ✅ | openUrl 对含 :// 的非 http/https scheme 直接拒绝 |
+| C-6 fetch 重复 | ✅ | 抽公共 authFetch（自动 token + 统一错误），poll 复用 |
+| D-1 parms deprecated | ✅ | serve/authorized/handlePost 加 @Suppress("DEPRECATION") |
+| D-2 systemUiVisibility | ✅ | hideSystemUi 加 @Suppress + minSdk 21 兼容注释 |
+| 编译警告清理 | ✅ | onReceivedError 加 OVERRIDE_DEPRECATION；onCreateWindow 消除变量遮蔽/安全调用；**assembleDebug 零 Kotlin 警告** |
+| A-1 mixedContentMode | ⏳ | 保留 ALWAYS_ALLOW（视频站兼容权衡），建议实机验证后评估收紧 |
+| A-2 token 轮换 | ⏳ | 保留持久 token，可选改为启动轮换 |
+| D-3 MainActivity 拆分 | ⏳ | 低优先级，重构风险高，留后续 |

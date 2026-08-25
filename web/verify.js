@@ -47,7 +47,8 @@ const server = http.createServer((req, res) => {
     return send(res, 200, 'text/html; charset=utf-8', html.replace('{token}', TOKEN));
   }
   if (uri === '/qr.png') {
-    if (!tokenOk) return unauthorized();
+    // 与 RemoteServer.kt 一致：/qr.png 只认 query 参数 t（不认 header）
+    if (url.searchParams.get('t') !== TOKEN) return unauthorized();
     res.writeHead(200, { 'Content-Type': 'image/png' });
     res.end(Buffer.from([0x89, 0x50, 0x4e, 0x47])); // PNG 魔数
     return;
@@ -65,7 +66,8 @@ const server = http.createServer((req, res) => {
     let body = '';
     req.on('data', (c) => (body += c));
     req.on('end', () => {
-      console.log('  [API] ' + req.method + ' ' + uri + '  body=' + body);
+      console.log('  [API] ' + req.method + ' ' + uri + '  body=' + (body.length > 100 ? body.slice(0, 100) + '...(' + body.length + 'B)' : body));
+      if (Buffer.byteLength(body, 'utf8') > 64 * 1024) return send(res, 413, 'text/plain', 'body too large');
       if (!body.trim()) return send(res, 400, 'text/plain', 'empty body');
       let json;
       try { json = JSON.parse(body); } catch (e) { return send(res, 400, 'text/plain', 'invalid json'); }
@@ -101,6 +103,8 @@ async function main() {
   check('GET /style.css -> 200 (兜底路由)', r.status === 200);
   r = await fetch(base + '/app.js');
   check('GET /app.js -> 200 (兜底路由)', r.status === 200);
+  r = await fetch(base + '/control/style.css');
+  check('GET /control/style.css -> 200 (前缀路由)', r.status === 200);
   r = await fetch(base + '/home');
   const home = await r.text();
   check('GET /home -> 200 且注入 token', r.status === 200 && home.includes('qr.png?t=' + TOKEN));
@@ -133,6 +137,8 @@ async function main() {
   check('POST /api/open (空body) -> 400', r.status === 400);
   r = await fetch(base + '/api/nope', { headers: authHeader });
   check('GET /api/nope -> 404', r.status === 404);
+  r = await fetch(base + '/api/open', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader), body: JSON.stringify({ url: 'x'.repeat(70 * 1024) }) });
+  check('POST /api/open (body > 64KB) -> 413', r.status === 413);
 
   console.log('\n[4] 控制页 HTML 引用的资源完整性');
   const html = await (await fetch(base + '/')).text();

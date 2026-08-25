@@ -63,6 +63,7 @@ class MainActivity : Activity(), RemoteActions {
         if (hasFocus) hideSystemUi()
     }
 
+    @Suppress("DEPRECATION") // minSdk 21 兼容需要，WindowInsetsController 需 API 30+
     private fun hideSystemUi() {
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN
@@ -211,8 +212,13 @@ class MainActivity : Activity(), RemoteActions {
     override fun openUrl(url: String) {
         val trimmed = url.trim()
         if (trimmed.isEmpty()) return
-        // 协议白名单：仅 http/https（拒绝 file/about 等，防本地文件读取面）
+        // 协议白名单：仅 http/https（拒绝 file/ftp/data/javascript 等）
         val lower = trimmed.lowercase()
+        val schemeEnd = lower.indexOf("://")
+        if (schemeEnd > 0) {
+            val scheme = lower.substring(0, schemeEnd)
+            if (scheme != "http" && scheme != "https") return
+        }
         val finalUrl = if (lower.startsWith("http://") || lower.startsWith("https://")) {
             trimmed
         } else {
@@ -314,7 +320,9 @@ class MainActivity : Activity(), RemoteActions {
             val wv = webView ?: return@runOnUiThread
             when (key) {
                 "back" -> {
-                    if (wv.canGoBack()) {
+                    if (toolbarVisible) {
+                        hideToolbar()
+                    } else if (wv.canGoBack()) {
                         wv.goBack()
                     } else {
                         Toast.makeText(this, "已经是第一页", Toast.LENGTH_SHORT).show()

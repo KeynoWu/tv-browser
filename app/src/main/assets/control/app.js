@@ -18,17 +18,24 @@
     else { statusDot.classList.remove('online'); }
   }
 
-  function api(url, body) {
-    var opts = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    };
-    if (AUTH_TOKEN) { opts.headers['X-Auth-Token'] = AUTH_TOKEN; }
-    if (body) { opts.body = JSON.stringify(body); }
-    return fetch(url, opts).then(function (r) {
+  // 公共请求包装：自动附加 token、统一错误语义（401/非 2xx 抛错）
+  function authFetch(url, opts) {
+    var finalOpts = Object.assign({}, opts);
+    var headers = Object.assign({}, (opts && opts.headers) || {});
+    if (AUTH_TOKEN) { headers['X-Auth-Token'] = AUTH_TOKEN; }
+    finalOpts.headers = headers;
+    return fetch(url, finalOpts).then(function (r) {
       if (r.status === 401) { throw new Error('unauthorized'); }
       if (!r.ok) { throw new Error('http ' + r.status); }
       return r;
+    });
+  }
+
+  function api(url, body) {
+    return authFetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
     });
   }
 
@@ -71,15 +78,23 @@
   }
   document.querySelectorAll('.key').forEach(function (b) {
     var key = b.getAttribute('data-key');
-    b.addEventListener('click', function () { api('/api/key', { key: key }); });
+    // 鼠标：mousedown 已立即发送，click（detail>0）跳过避免重复；键盘激活 click（detail===0）发送
+    b.addEventListener('click', function (e) {
+      if (e.detail === 0) { api('/api/key', { key: key }); }
+    });
+    // 触摸：立即发送一次 + 长按连发（preventDefault 抑制合成 click）
     b.addEventListener('touchstart', function (e) {
       e.preventDefault();
-      api('/api/key', { key: key }); // 立即发送一次，单击即有响应
-      startRepeat(key);              // 长按进入连发
+      api('/api/key', { key: key });
+      startRepeat(key);
     });
     b.addEventListener('touchend', stopRepeat);
     b.addEventListener('touchcancel', stopRepeat);
-    b.addEventListener('mousedown', function () { startRepeat(key); });
+    // 鼠标：立即发送一次 + 长按连发（click 不再补发）
+    b.addEventListener('mousedown', function () {
+      api('/api/key', { key: key });
+      startRepeat(key);
+    });
     b.addEventListener('mouseup', stopRepeat);
     b.addEventListener('mouseleave', stopRepeat);
   });
@@ -100,10 +115,7 @@
       setStatus('未连接（缺少令牌，请通过二维码打开）', false);
       return;
     }
-    var opts = { headers: {} };
-    if (AUTH_TOKEN) { opts.headers['X-Auth-Token'] = AUTH_TOKEN; }
-    fetch('/api/status', opts).then(function (r) {
-      if (r.status === 401) { throw new Error('unauthorized'); }
+    authFetch('/api/status').then(function (r) {
       return r.json();
     }).then(function (s) {
       setStatus(s.title || '电视浏览器', true);
