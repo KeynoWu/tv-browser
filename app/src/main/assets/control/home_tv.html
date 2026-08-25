@@ -7,28 +7,65 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#121212; color:#fff; font-family: sans-serif; overflow:hidden; }
-  .wrap { width:100vw; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4vh; }
-  h1 { font-size:clamp(44px, 6.5vh, 96px); letter-spacing:0.2em; }
-  .sub { font-size:clamp(22px, 3.2vh, 44px); color:#bbb; }
+  .wrap { width:100vw; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3.5vh; }
+  h1 { font-size:clamp(40px, 6vh, 88px); letter-spacing:0.2em; }
+  .sub { font-size:clamp(20px, 3vh, 40px); color:#bbb; }
   .qr-box { text-align:center; }
-  .qr-box img { width:34vh; height:34vh; min-width:280px; min-height:280px; background:#fff; padding:8px; border-radius:12px; }
-  .qr-tip { margin-top:2vh; font-size:clamp(22px, 3.4vh, 44px); color:#4caf50; }
-  .sites { display:flex; gap:2vw; margin-top:2vh; }
-  .site {
-    padding:2.2vh 2.6vw; background:#2a2a2a; border-radius:12px;
-    font-size:clamp(22px, 3.4vh, 44px); text-decoration:none; color:#fff; outline:none;
-    transition: background-color 0.2s ease;
+  .qr-box img { width:30vh; height:30vh; min-width:260px; min-height:260px; background:#fff; padding:8px; border-radius:12px; }
+  .qr-tip { margin-top:1.5vh; font-size:clamp(20px, 3vh, 40px); color:#4caf50; }
+  .sites { display:flex; gap:1.8vw; margin-top:1.5vh; flex-wrap:wrap; justify-content:center; }
+  .site, .urlbtn {
+    padding:1.8vh 2.4vw; background:#2a2a2a; border-radius:12px; border:none;
+    font-size:clamp(20px, 3.2vh, 42px); text-decoration:none; color:#fff; cursor:pointer;
+    outline:none; transition: background-color 0.2s ease;
   }
-  .site:focus, .site:hover { background:#ff4081; color:#fff; }
+  .site:focus, .site:hover, .urlbtn:focus, .urlbtn:hover { background:#ff4081; }
+  .urlbtn { background:#3a3a3a; }
+  .urlbtn:focus, .urlbtn:hover { background:#ff4081; }
+
+  /* ---- TV 虚拟键盘层 ---- */
+  .kb-layer {
+    position:fixed; inset:0; background:rgba(10,10,10,0.96); z-index:100;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3vh;
+  }
+  .kb-layer[hidden] { display:none; }
+  .kb-url {
+    width:86vw; text-align:center; font-size:clamp(26px, 4.2vh, 56px);
+    background:#1a1a1a; border:2px solid #444; border-radius:12px;
+    padding:2.4vh 2vw; color:#fff; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis; min-height:12vh;
+  }
+  .kb-url.empty { color:#888; }
+  .kb-grid {
+    display:grid; grid-template-columns:repeat(7, minmax(0, 1fr));
+    gap:1.2vh 1vw; width:88vw;
+  }
+  .kb-key {
+    padding:1.6vh 0.4vw; border:none; border-radius:10px; background:#242424;
+    color:#fff; font-size:clamp(22px, 3.4vh, 44px); text-align:center;
+    outline:none; cursor:pointer; transition: background-color 0.15s ease;
+  }
+  .kb-key:focus, .kb-key:hover { background:#ff4081; }
+  .kb-key.sym { background:#333; }
+  .kb-controls { display:flex; gap:2vw; }
+  .kb-ctl {
+    padding:1.8vh 3.5vw; border:none; border-radius:12px; background:#333;
+    color:#fff; font-size:clamp(20px, 3vh, 40px); outline:none; cursor:pointer;
+    transition: background-color 0.15s ease;
+  }
+  .kb-ctl:focus, .kb-ctl:hover { background:#ff4081; }
+  .kb-ctl.ok { background:#4caf50; }
+  .kb-ctl.ok:focus, .kb-ctl.ok:hover { background:#66d96b; }
 </style>
 </head>
 <body>
+
   <div class="wrap">
     <h1>电视浏览器</h1>
-    <div class="sub">手机扫一扫 · 输网址 · 当遥控器</div>
+    <div class="sub">手机扫一扫 · 或遥控器直接输网址</div>
     <div class="qr-box">
       <img src="/qr.png?t={token}" alt="扫码遥控" />
-      <div class="qr-tip">手机浏览器扫码连接本机</div>
+      <div class="qr-tip">手机扫码连接本机</div>
     </div>
     <div class="sites" id="sites">
       <a class="site" tabindex="0" href="https://www.bilibili.com">哔哩哔哩</a>
@@ -36,25 +73,173 @@
       <a class="site" tabindex="0" href="https://v.qq.com">腾讯视频</a>
       <a class="site" tabindex="0" href="https://www.youku.com">优酷</a>
       <a class="site" tabindex="0" href="https://tv.cctv.com/live">央视直播</a>
+      <button class="urlbtn" tabindex="0" id="openKeyboard">输入网址</button>
     </div>
   </div>
+
+  <!-- TV 虚拟键盘层 -->
+  <div class="kb-layer" id="kbLayer" hidden>
+    <div class="kb-url empty" id="kbUrl">请用遥控器输入网址</div>
+    <div class="kb-grid" id="kbGrid"></div>
+    <div class="kb-controls">
+      <button class="kb-ctl" tabindex="0" data-action="backspace">删除</button>
+      <button class="kb-ctl" tabindex="0" data-action="clear">清空</button>
+      <button class="kb-ctl ok" tabindex="0" data-action="ok">确定</button>
+      <button class="kb-ctl" tabindex="0" data-action="cancel">取消</button>
+    </div>
+  </div>
+
   <script>
-    // 遥控器方向键焦点导航（左右移动，OK/Enter 打开）
     (function () {
-      var sites = Array.prototype.slice.call(document.querySelectorAll('.site'));
-      if (!sites.length) return;
-      var idx = 0;
-      function focusAt(i) {
-        idx = (i + sites.length) % sites.length;
-        sites[idx].focus();
+      // ---- 主页站点焦点导航（左右） ----
+      var sites = Array.prototype.slice.call(document.querySelectorAll('.sites [tabindex]'));
+      var siteIdx = 0;
+      function focusSite(i) {
+        siteIdx = (i + sites.length) % sites.length;
+        sites[siteIdx].focus();
       }
+
+      // ---- TV 键盘 ----
+      var kbLayer = document.getElementById('kbLayer');
+      var kbUrl = document.getElementById('kbUrl');
+      var kbGrid = document.getElementById('kbGrid');
+      var kbKeys = [];
+      var kbActive = false;
+      // 字母 + 数字 + URL 常用符号（7 列布局）
+      var CHARS = [
+        'a','b','c','d','e','f','g',
+        'h','i','j','k','l','m','n',
+        'o','p','q','r','s','t','u',
+        'v','w','x','y','z','0','1',
+        '2','3','4','5','6','7','8',
+        '9','.',':','/','-','_','?'
+      ];
+
+      function buildKeyboard() {
+        var html = '';
+        CHARS.forEach(function (c) {
+          html += '<button class="kb-key' + (c === ':' || c === '/' || c === '.' || c === '-' || c === '_' || c === '?' ? ' sym' : '') + '" tabindex="0" data-char="' + c + '">' + c + '</button>';
+        });
+        kbGrid.innerHTML = html;
+        kbKeys = Array.prototype.slice.call(kbGrid.querySelectorAll('.kb-key'));
+      }
+
+      function showKeyboard() {
+        kbActive = true;
+        kbLayer.hidden = false;
+        kbUrl.textContent = '';
+        kbUrl.classList.add('empty');
+        if (kbKeys.length) kbKeys[0].focus();
+      }
+      function hideKeyboard() {
+        kbActive = false;
+        kbLayer.hidden = true;
+        kbUrl.textContent = '';
+        kbUrl.classList.add('empty');
+        focusSite(siteIdx);
+      }
+      function appendChar(c) {
+        if (kbUrl.classList.contains('empty')) {
+          kbUrl.textContent = '';
+          kbUrl.classList.remove('empty');
+        }
+        kbUrl.textContent += c;
+      }
+      function doOk() {
+        var url = kbUrl.textContent.trim();
+        if (!url) return;
+        if (url.indexOf('://') < 0) url = 'http://' + url; // 无协议时补 http://
+        window.location.href = url;
+      }
+      // 控制键
+      document.querySelectorAll('.kb-ctl').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var act = b.getAttribute('data-action');
+          if (act === 'backspace') {
+            if (!kbUrl.classList.contains('empty')) {
+              kbUrl.textContent = kbUrl.textContent.slice(0, -1);
+              if (!kbUrl.textContent) kbUrl.classList.add('empty');
+            }
+          } else if (act === 'clear') {
+            kbUrl.textContent = '';
+            kbUrl.classList.add('empty');
+          } else if (act === 'ok') {
+            doOk();
+          } else if (act === 'cancel') {
+            hideKeyboard();
+          }
+        });
+      });
+
+      // ---- 键盘层：方向键网格导航（7 列） ----
+      function focusKey(i) {
+        i = (i + kbKeys.length) % kbKeys.length;
+        kbKeys[i].focus();
+        return i;
+      }
+      function kbKeyIndex(el) { return kbKeys.indexOf(el); }
+
+      // ---- 全局 keydown 分发：键盘层优先 ----
       document.addEventListener('keydown', function (e) {
+        if (kbActive) {
+          var cur = kbKeys.indexOf(document.activeElement);
+          var ctl = Array.prototype.slice.call(document.querySelectorAll('.kb-ctl'));
+          var ctlIdx = ctl.indexOf(document.activeElement);
+          switch (e.key) {
+            case 'ArrowLeft':
+              e.preventDefault();
+              if (cur >= 0) { focusKey(cur - 1); }
+              else if (ctlIdx >= 0) { ctl[Math.max(0, ctlIdx - 1)].focus(); }
+              break;
+            case 'ArrowRight':
+              e.preventDefault();
+              if (cur >= 0) { focusKey(cur + 1); }
+              else if (ctlIdx >= 0) { ctl[Math.min(ctl.length - 1, ctlIdx + 1)].focus(); }
+              break;
+            case 'ArrowUp':
+              e.preventDefault();
+              if (ctlIdx >= 0) { focusKey(kbKeys.length - 1); }
+              else if (cur >= 0) { focusKey(cur - 7); }
+              break;
+            case 'ArrowDown':
+              e.preventDefault();
+              if (cur >= 0) { focusKey(cur + 7); }
+              break;
+            case 'Enter':
+              if (cur >= 0) {
+                e.preventDefault(); // 只在网格键上拦截，控制键走默认 click
+                appendChar(kbKeys[cur].getAttribute('data-char'));
+              }
+              break;
+            case 'Backspace':
+              if (cur >= 0) {
+                e.preventDefault();
+                if (!kbUrl.classList.contains('empty')) {
+                  kbUrl.textContent = kbUrl.textContent.slice(0, -1);
+                  if (!kbUrl.textContent) kbUrl.classList.add('empty');
+                }
+              }
+              break;
+            default:
+              // 数字/字母直输（遥控器带数字键时）
+              if (/^[a-zA-Z0-9.:/-]$/.test(e.key)) { appendChar(e.key); }
+          }
+          return;
+        }
+        // ---- 主页模式 ----
         switch (e.key) {
-          case 'ArrowLeft': e.preventDefault(); focusAt(idx - 1); break;
-          case 'ArrowRight': e.preventDefault(); focusAt(idx + 1); break;
+          case 'ArrowLeft': e.preventDefault(); focusSite(siteIdx - 1); break;
+          case 'ArrowRight': e.preventDefault(); focusSite(siteIdx + 1); break;
           case 'ArrowUp': case 'ArrowDown': e.preventDefault(); break;
         }
       });
+
+      // ---- 入口按钮 ----
+      document.getElementById('openKeyboard').addEventListener('click', function () {
+        showKeyboard();
+      });
+
+      buildKeyboard();
       sites[0].focus();
     })();
   </script>
