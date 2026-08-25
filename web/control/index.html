@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>电视遥控</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="status-bar">
+    <span class="status-dot" id="statusDot"></span>
+    <div class="status-info">
+      <div class="status-title" id="statusTitle">未连接电视</div>
+      <div class="status-url" id="statusUrl"></div>
+    </div>
+  </header>
+
+  <section class="address-bar">
+    <input type="text" id="urlInput" placeholder="输入网址，如 www.bilibili.com" autocomplete="off" enterkeyhint="go">
+    <button id="btnOpen">打开</button>
+    <button id="btnSearch">搜索</button>
+  </section>
+
+  <section class="quick-sites">
+    <button class="site" data-url="https://www.bilibili.com">B站</button>
+    <button class="site" data-url="https://www.iqiyi.com">爱奇艺</button>
+    <button class="site" data-url="https://v.qq.com">腾讯</button>
+    <button class="site" data-url="https://www.youku.com">优酷</button>
+    <button class="site" data-url="https://tv.cctv.com/live">央视直播</button>
+    <button class="site" data-url="https://www.mgtv.com">芒果</button>
+  </section>
+
+  <section class="text-input">
+    <input type="text" id="textInput" placeholder="文字输入：先让电视页面聚焦输入框，再发送">
+    <button id="btnSendText">发送到电视</button>
+  </section>
+
+  <section class="remote">
+    <div class="dpad">
+      <button class="key up" data-key="up">▲</button>
+      <button class="key left" data-key="left">◀</button>
+      <button class="key ok" data-key="ok">OK</button>
+      <button class="key right" data-key="right">▶</button>
+      <button class="key down" data-key="down">▼</button>
+    </div>
+    <div class="side-keys">
+      <button class="key wide" data-key="back">返回</button>
+      <button class="key wide" data-key="menu">菜单</button>
+      <button class="key wide" data-key="home">主页</button>
+      <button class="key wide" data-key="refresh">刷新</button>
+    </div>
+  </section>
+
+  <footer class="footer">长按方向键可连续移动</footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

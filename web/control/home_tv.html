@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电视浏览器主页</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#121212; color:#fff; font-family: sans-serif; overflow:hidden; }
+  .wrap { width:100vw; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4vh; }
+  h1 { font-size:6vh; letter-spacing:0.2em; }
+  .sub { font-size:2.6vh; color:#aaa; }
+  .qr-box { text-align:center; }
+  .qr-box img { width:34vh; height:34vh; background:#fff; padding:1vh; border-radius:1vh; }
+  .qr-tip { margin-top:2vh; font-size:3vh; color:#4caf50; }
+  .sites { display:flex; gap:2vw; margin-top:2vh; }
+  .site { padding:2vh 2.5vw; background:#2a2a2a; border-radius:1vh; font-size:2.8vh; text-decoration:none; color:#fff; }
+  .site:focus, .site:hover { background:#ff4081; outline:none; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>电视浏览器</h1>
+    <div class="sub">手机扫一扫 · 输网址 · 当遥控器</div>
+    <div class="qr-box">
+      <img src="/qr.png" alt="扫码遥控" />
+      <div class="qr-tip">手机浏览器扫码连接本机</div>
+    </div>
+    <div class="sites">
+      <a class="site" href="https://www.bilibili.com">哔哩哔哩</a>
+      <a class="site" href="https://www.iqiyi.com">爱奇艺</a>
+      <a class="site" href="https://v.qq.com">腾讯视频</a>
+      <a class="site" href="https://www.youku.com">优酷</a>
+      <a class="site" href="https://tv.cctv.com/live">央视直播</a>
+    </div>
+  </div>
+</body>
+</html>
