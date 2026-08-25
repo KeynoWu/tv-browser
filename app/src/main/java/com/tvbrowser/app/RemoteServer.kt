@@ -2,6 +2,7 @@ package com.tvbrowser.app
 
 import android.graphics.Bitmap
 import fi.iki.elonen.NanoHTTPD
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -59,6 +60,8 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
                     if (authorized(session)) handlePost(session, "text") { body ->
                         actions.inputText(body.optString("text"))
                     } else unauthorized()
+                uri == "/api/suggest" ->
+                    if (authorized(session)) serveSuggest(session) else unauthorized()
                 uri.startsWith("/api/") ->
                     newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "404 not found")
                 // 控制页的静态资源（style.css/app.js 等）以根路径请求，从 control/ 兜底读取
@@ -154,6 +157,48 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
     private fun serveStatus(): Response {
         val json = JSONObject(actions.currentStatus())
         return newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8", json.toString())
+    }
+
+    /** 搜索联想：转发 Bing osjson 接口（电视端拼音输入中文用） */
+    @Suppress("DEPRECATION")
+    private fun serveSuggest(session: IHTTPSession): Response {
+        val q = session.parms["q"]?.trim().orEmpty()
+        if (q.isEmpty()) {
+            return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "missing q")
+        }
+        val suggestions = fetchBingSuggest(q)
+        val json = JSONObject()
+        json.put("q", q)
+        json.put("suggestions", suggestions)
+        return newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8", json.toString())
+    }
+
+    private fun fetchBingSuggest(q: String): List<String> {
+        return try {
+            val url = "https://cn.bing.com/osjson.aspx?query=" + java.net.URLEncoder.encode(q, "UTF-8")
+            val text = httpGet(url) ?: return emptyList()
+            val arr = JSONArray(text)
+            val list = arr.optJSONArray(1) ?: return emptyList()
+            (0 until list.length())
+                .map { list.optString(it) }
+                .filter { it.isNotBlank() }
+                .take(8)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /** 简单 HTTP GET（NanoHTTPD 工作线程调用，不阻塞主线程；5s 超时） */
+    private fun httpGet(url: String): String? {
+        return try {
+            val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     @Suppress("DEPRECATION")

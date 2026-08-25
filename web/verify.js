@@ -65,6 +65,14 @@ const server = http.createServer((req, res) => {
       ip: '192.168.1.100', port: 8080
     }));
   }
+  if (uri === '/api/suggest') {
+    if (!tokenOk) return unauthorized();
+    const q = url.searchParams.get('q') || '';
+    if (!q) return send(res, 400, 'text/plain', 'missing q');
+    return send(res, 200, 'application/json', JSON.stringify({
+      q: q, suggestions: ['西游记', '西游记全集', '西游记女儿国', '西游伏妖篇']
+    }));
+  }
   if (uri === '/api/open' || uri === '/api/key' || uri === '/api/input') {
     if (!tokenOk) return unauthorized();
     let body = '';
@@ -143,6 +151,13 @@ async function main() {
   r = await fetch(base + '/api/status', { headers: authHeader });
   const st = await r.json();
   check('GET /api/status (header token) -> 200 JSON', r.status === 200 && !!st.url && !!st.title);
+  r = await fetch(base + '/api/suggest?q=xiyouji', { headers: authHeader });
+  const sug = await r.json();
+  check('GET /api/suggest?q=xiyouji -> 200 含中文候选', r.status === 200 && Array.isArray(sug.suggestions) && sug.suggestions.length > 0 && typeof sug.suggestions[0] === 'string');
+  r = await fetch(base + '/api/suggest?q=xiyouji');
+  check('GET /api/suggest (无token) -> 401', r.status === 401);
+  r = await fetch(base + '/api/suggest', { headers: authHeader });
+  check('GET /api/suggest (缺q) -> 400', r.status === 400);
 
   console.log('\n[3] API 调用（模拟 app.js 的 fetch 格式，带 token）');
   r = await fetch(base + '/api/open', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader), body: JSON.stringify({ url: 'https://www.iqiyi.com' }) });
