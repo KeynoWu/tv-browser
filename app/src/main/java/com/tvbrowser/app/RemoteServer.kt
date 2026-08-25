@@ -17,6 +17,7 @@ import java.io.InputStream
  * - POST /api/open        {url} 打开网址（需 token）
  * - POST /api/key         {key} 模拟按键（需 token）
  * - POST /api/input       {text} 注入文字（需 token）
+ * - GET  /api/suggest     ?q= 搜索联想（需 token）
  */
 class RemoteServer(port: Int, private val actions: RemoteActions, private val token: String) : NanoHTTPD(port) {
 
@@ -137,7 +138,7 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
                 actions.assets().open(normalized).use { it.readBytes() }
             }
             val resp = newChunkedResponse(Response.Status.OK, mime, java.io.ByteArrayInputStream(bytes))
-            resp.addHeader("Cache-Control", "public, max-age=3600")
+            resp.addHeader("Cache-Control", "public, max-age=300") // 5 分钟，避免 App 更新后手机端长时间用旧控制页
             resp
         } catch (e: Exception) {
             newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "asset not found: " + normalized)

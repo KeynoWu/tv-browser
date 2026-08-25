@@ -347,6 +347,8 @@ class MainActivity : Activity(), RemoteActions {
         if (currentUrl.isNotEmpty() && binding.urlInput.text.isNullOrEmpty()) {
             binding.urlInput.setText(currentUrl)
         }
+        // 先 cancel 旧动画再重置状态，避免快速连按菜单键时动画互相取消导致状态错乱
+        binding.toolbar.animate().cancel()
         binding.toolbar.visibility = View.VISIBLE
         binding.toolbar.alpha = 0f
         binding.toolbar.translationY = binding.toolbar.height.toFloat()
@@ -358,6 +360,7 @@ class MainActivity : Activity(), RemoteActions {
         if (!toolbarVisible) return
         toolbarVisible = false
         binding.urlInput.clearFocus()
+        binding.toolbar.animate().cancel() // 防止与 show 动画交错
         binding.toolbar.animate().alpha(0f).translationY(binding.toolbar.height.toFloat())
             .setDuration(150)
             .withEndAction {

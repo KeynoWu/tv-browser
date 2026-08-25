@@ -188,16 +188,19 @@
         if (suggestTimer) clearTimeout(suggestTimer);
         suggestTimer = setTimeout(loadSuggest, 300);
       }
+      var suggestSeq = 0; // 联想请求序号，丢弃过期响应（防止快速输入时乱序覆盖）
       function loadSuggest() {
         var q = getInput().trim();
         if (!q) { renderSuggest([]); return; }
+        var mySeq = ++suggestSeq;
         var url = '/api/suggest?q=' + encodeURIComponent(q);
         fetch(url, { headers: { 'X-Auth-Token': TV_TOKEN } })
           .then(function (r) { return r.json(); })
           .then(function (d) {
+            if (mySeq !== suggestSeq) return; // 旧响应已过期，丢弃
             renderSuggest(d.suggestions || []);
           })
-          .catch(function () { renderSuggest([]); });
+          .catch(function () { if (mySeq === suggestSeq) renderSuggest([]); });
       }
       // HTML 转义，防止联想词注入（候选文本来自 Bing，须按纯文本渲染）
       function escapeHtml(s) {

@@ -44,11 +44,13 @@
     });
   }
 
-  // 成功反馈：按钮短暂显示对勾（500ms 后还原）
+  // 成功反馈：按钮短暂显示对勾（500ms 后还原；防快速连点的竞态——用 dataset 保存原始文本 + 清理旧定时器）
   function flashOk(btn) {
-    var original = btn.textContent;
+    var original = btn.dataset.orig || btn.textContent;
+    btn.dataset.orig = original;
     btn.textContent = '✓';
-    setTimeout(function () { btn.textContent = original; }, 500);
+    if (btn._flashTimer) { clearTimeout(btn._flashTimer); }
+    btn._flashTimer = setTimeout(function () { btn.textContent = original; }, 500);
   }
 
   // 打开网址
@@ -75,10 +77,12 @@
       .catch(function () { setStatus('发送失败（未连接或令牌失效）', false); });
   });
 
-  // 快捷站点
+  // 快捷站点（成功同样给 ✓ 反馈）
   document.querySelectorAll('.site').forEach(function (b) {
     b.addEventListener('click', function () {
-      api('/api/open', { url: b.getAttribute('data-url') });
+      api('/api/open', { url: b.getAttribute('data-url') }).then(function () {
+        flashOk(b);
+      });
     });
   });
 
@@ -114,7 +118,11 @@
     b.addEventListener('mouseleave', stopRepeat);
   });
 
-  // 文字输入到电视
+  // 文字输入到电视（支持手机键盘 Enter 直接发送）
+  var textInput = document.getElementById('textInput');
+  textInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { document.getElementById('btnSendText').click(); }
+  });
   document.getElementById('btnSendText').addEventListener('click', function () {
     var v = document.getElementById('textInput').value;
     if (v) {
