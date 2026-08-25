@@ -31,6 +31,10 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
     @Suppress("DEPRECATION")
     override fun serve(session: IHTTPSession): Response {
         val uri = session.uri
+        // 防 DNS rebinding：Host 必须是本机 IP / 127.0.0.1 / localhost（恶意域名解析到本机时拒绝）
+        if (!hostAllowed(session)) {
+            return newFixedLengthResponse(Response.Status.FORBIDDEN, "text/plain", "forbidden host")
+        }
         return try {
             when {
                 uri == "/" || uri == "/control" || uri == "/control/" ->
@@ -66,6 +70,15 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
         }
     }
 
+    /** Host 白名单校验：本机 IP / 127.0.0.1 / localhost（端口可省略） */
+    private fun hostAllowed(session: IHTTPSession): Boolean {
+        val host = session.headers["host"] ?: return false
+        val hostname = host.substringBefore(":").lowercase()
+        if (hostname == "127.0.0.1" || hostname == "localhost") return true
+        val localIp = NetUtil.getLocalIpAddress() ?: return false
+        return hostname == localIp
+    }
+
     /** token 校验：请求头 X-Auth-Token 或查询参数 t */
     @Suppress("DEPRECATION")
     private fun authorized(session: IHTTPSession): Boolean {
@@ -78,11 +91,19 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
     private fun unauthorized(): Response =
         newFixedLengthResponse(Response.Status.UNAUTHORIZED, "text/plain", "unauthorized")
 
+    private var homeHtmlCached: ByteArray? = null
+
     private fun serveHome(): Response {
+        val cached = homeHtmlCached
+        if (cached != null) {
+            return newChunkedResponse(Response.Status.OK, "text/html; charset=utf-8", java.io.ByteArrayInputStream(cached))
+        }
         val html = readAssetText("control/home_tv.html")
             ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "asset not found")
         val injected = html.replace("{token}", token)
-        return newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", injected)
+        val bytes = injected.toByteArray(Charsets.UTF_8)
+        homeHtmlCached = bytes
+        return newChunkedResponse(Response.Status.OK, "text/html; charset=utf-8", java.io.ByteArrayInputStream(bytes))
     }
 
     private fun readAssetText(path: String): String? {
@@ -92,6 +113,9 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
             null
         }
     }
+
+    // 静态资源内存缓存（控制页三件套 + 注入后的主页，总量 < 1MB）
+    private val assetCache = java.util.concurrent.ConcurrentHashMap<String, ByteArray>()
 
     private fun serveAsset(path: String): Response {
         val normalized = path.removePrefix("/")
@@ -106,8 +130,12 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
             else -> "application/octet-stream"
         }
         return try {
-            val stream: InputStream = actions.assets().open(normalized)
-            newChunkedResponse(Response.Status.OK, mime, stream)
+            val bytes = assetCache.getOrPut(normalized) {
+                actions.assets().open(normalized).use { it.readBytes() }
+            }
+            val resp = newChunkedResponse(Response.Status.OK, mime, java.io.ByteArrayInputStream(bytes))
+            resp.addHeader("Cache-Control", "public, max-age=3600")
+            resp
         } catch (e: Exception) {
             newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "asset not found: " + normalized)
         }

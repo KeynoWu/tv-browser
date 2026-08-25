@@ -36,6 +36,10 @@ function sendFile(res, name) {
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   const uri = url.pathname;
+  // 与 RemoteServer.kt 的 hostAllowed 一致：Host 必须是本机（127.0.0.1/localhost）
+  const hostname = (req.headers['host'] || '').split(':')[0].toLowerCase();
+  const hostOk = hostname === '127.0.0.1' || hostname === 'localhost';
+  if (!hostOk) return send(res, 403, 'text/plain', 'forbidden host');
   const tokenOk = (url.searchParams.get('t') === TOKEN) ||
     (req.headers['x-auth-token'] === TOKEN);
   const unauthorized = () => send(res, 401, 'text/plain', 'unauthorized');
@@ -96,8 +100,26 @@ async function main() {
   const authHeader = { 'X-Auth-Token': TOKEN };
   console.log('=== 电视浏览器控制链路验证（含 token 鉴权） ===');
 
+  // fetch 禁止设置 Host header，用 http.request 原始请求伪造
+  function rawGet(hostHeader) {
+    return new Promise(function (resolve, reject) {
+      var req = http.request({
+        host: '127.0.0.1', port: PORT, path: '/', method: 'GET',
+        headers: { Host: hostHeader }
+      }, function (res) { res.resume(); resolve(res.statusCode); });
+      req.on('error', reject);
+      req.end();
+    });
+  }
+
+  console.log('\n[0] Host 校验（防 DNS rebinding）');
+  let r = await rawGet('evil.com');
+  check('GET / (伪造 Host: evil.com) -> 403', r === 403);
+  r = await rawGet('127.0.0.1:' + PORT);
+  check('GET / (正常 Host) -> 200', r === 200);
+
   console.log('\n[1] 静态资源路由');
-  let r = await fetch(base + '/');
+  r = await fetch(base + '/');
   check('GET / -> 200 控制页', r.status === 200 && (await r.text()).includes('电视遥控'));
   r = await fetch(base + '/style.css');
   check('GET /style.css -> 200 (兜底路由)', r.status === 200);

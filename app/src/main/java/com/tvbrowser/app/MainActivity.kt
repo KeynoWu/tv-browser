@@ -87,9 +87,13 @@ class MainActivity : Activity(), RemoteActions {
         s.setSupportMultipleWindows(true)
         s.loadWithOverviewMode = true
         s.useWideViewPort = true
-        s.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        s.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW // 视频站兼容权衡（见 REVIEW2 A-1）
         s.cacheMode = WebSettings.LOAD_DEFAULT
         s.allowFileAccess = false // 禁止 file:// 本地文件读取（防局域网利用）
+        s.setAllowContentAccess(false) // 禁止 content:// 内容访问
+        s.setGeolocationEnabled(false) // 禁用定位
+        s.setSaveFormData(false) // 不保存表单数据
+        s.setSupportZoom(false) // 禁用缩放（TV 遥控场景无意义）
         s.userAgentString = s.userAgentString + " TvBrowser/0.1"
 
         wv.webViewClient = object : WebViewClient() {
@@ -119,6 +123,11 @@ class MainActivity : Activity(), RemoteActions {
                     Toast.makeText(this@MainActivity, "加载失败: " + error?.description, Toast.LENGTH_SHORT).show()
                 }
             }
+        }
+
+        // 拦截下载：当前版本不做文件下载，提示用户
+        wv.setDownloadListener { _, url, _, _, _ ->
+            Toast.makeText(this, "暂不支持文件下载", Toast.LENGTH_SHORT).show()
         }
 
         wv.webChromeClient = object : WebChromeClient() {
@@ -225,6 +234,7 @@ class MainActivity : Activity(), RemoteActions {
             "http://" + trimmed
         }
         val wv = webView ?: return
+        if (isDestroyed || isFinishing) return
         runOnUiThread { wv.loadUrl(finalUrl) }
     }
 
@@ -253,6 +263,11 @@ class MainActivity : Activity(), RemoteActions {
         }
     }
 
+    override fun onLowMemory() {
+        super.onLowMemory()
+        webView?.freeMemory()
+    }
+
     override fun onDestroy() {
         remoteServer?.stop()
         try {
@@ -261,6 +276,7 @@ class MainActivity : Activity(), RemoteActions {
             // 视图可能已被移除，忽略
         }
         webView?.destroy()
+        webView = null // 销毁后置空，防止残留引用被调用崩溃
         super.onDestroy()
     }
 
@@ -316,6 +332,7 @@ class MainActivity : Activity(), RemoteActions {
 
     // ---- RemoteActions ----
     override fun handleRemoteKey(key: String) {
+        if (isDestroyed || isFinishing) return
         runOnUiThread {
             val wv = webView ?: return@runOnUiThread
             when (key) {
@@ -350,6 +367,7 @@ class MainActivity : Activity(), RemoteActions {
     }
 
     override fun inputText(text: String) {
+        if (isDestroyed || isFinishing) return
         runOnUiThread {
             val encoded = Base64.encodeToString(text.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
             val js = """

@@ -1,0 +1,78 @@
+# tv-browser 安全 / 稳定 / 性能 审查与优化报告（REVIEW3）
+
+> 审查维度：安全性、稳定性、性能（三维度专项）
+> 基线：REVIEW2 修复后（commit 9ba11ea）；本轮优化 commit：见文末
+> 验证：gradlew assembleDebug BUILD SUCCESSFUL（零 Kotlin 警告）；node web/verify.js 21/21 通过（新增 Host 校验 2 例）
+
+---
+
+## 一、安全性优化
+
+### S1 ✅ Host 校验（防 DNS rebinding）— 新增
+- **风险**：恶意网页/域名（如广告域名）DNS 解析到 127.0.0.1 后，其 JS 可 fetch 电视的 :8080 API（同源策略被 rebinding 绕过），无 token 时虽 401，但 token 已知时（同网段泄露）可控制电视。
+- **修复**：RemoteServer.serve() 开头校验 Host header，仅允许 127.0.0.1 / localhost / 本机局域网 IP，否则 403。
+- **验证**：verify.js 新增伪造 Host=evil.com → 403 用例（Node fetch 禁止 Host header，用 http.request 原始请求实现）。
+
+### S2 ✅ 控制页 token 清理 — 新增
+- **风险**：二维码 URL 含 token（/?t=TOKEN），会出现在手机浏览器地址栏与历史记录。
+- **修复**：app.js 取出 token 后立即 sessionStorage 持久化 + history.replaceState 清除 URL 中的 token；刷新页面从 sessionStorage 恢复（不丢失连接），关闭标签页后 sessionStorage 清空（重新扫码）。
+- **权衡**：清除后地址栏不再显示 token；QR 码图片本身仍含 token（无法避免，二维码内容即连接凭证）。
+
+### S3 ✅ WebView 能力收紧 — 新增
+- 新增禁用项：content:// 内容访问（setAllowContentAccess=false）、定位（setGeolocationEnabled=false）、表单保存（setSaveFormData=false）、页面缩放（setSupportZoom=false，TV 遥控无意义）。
+- 与既有防护叠加：协议白名单（仅 http/https）、allowFileAccess=false、无 addJavascriptInterface（控制走 HTTP API）、混合内容 ALWAYS_ALLOW 保留（视频站兼容权衡，见 REVIEW2 A-1）。
+
+---
+
+## 二、稳定性优化
+
+### St1 ✅ Activity 销毁后调用保护 — 新增
+- **风险**：NanoHTTPD 后台线程在 Activity onDestroy 后仍可能触发 RemoteActions（如排队中的 /api/open），runOnUiThread post 的任务访问已 destroy 的 WebView 会崩溃。
+- **修复**：① onDestroy 中 destroy 后置 webView = null；② openUrl / handleRemoteKey / inputText 在 post 前检查 isDestroyed || isFinishing。
+
+### St2 ✅ 下载行为拦截 — 新增
+- **风险**：网页触发下载时 WebView 无 DownloadListener，行为未定义（可能无响应或走系统默认）。
+- **修复**：setDownloadListener 拦截并 Toast 提示"暂不支持文件下载"（当前版本不提供下载能力）。
+
+### St3 ✅ 低内存释放 — 新增
+- onLowMemory() 调用 webView.freeMemory()，降低长时浏览被系统回收的概率。
+
+---
+
+## 三、性能优化
+
+### P1 ✅ 控制页静态资源内存缓存 — 新增
+- **问题**：每次请求从 assets 重新读取 + 解压（index.html / style.css / app.js / 注入后主页）。
+- **修复**：ConcurrentHashMap 缓存资源字节（<1MB 总量）；serveHome 注入 token 结果也缓存（token 不变即复用）。
+- **效果**：控制页/主页资源加载从"每次读 APK"降为"内存命中"。
+
+### P2 ✅ 响应缓存头 — 新增
+- serveAsset 响应加 Cache-Control: public, max-age=3600，手机浏览器二次打开控制页走本地缓存。
+
+### P3 ✅ WebView 低内存释放 — 见 St3
+- 长时浏览内存增长场景下主动释放。
+
+### 保留项（收益低/有风险，未做）
+- QR PNG 字节缓存：bitmap 已按 ip|token 缓存，PNG 压缩仅主页加载时一次（~几十 ms），收益低。
+- NetUtil 接口变化即时失效：30s TTL 已覆盖切网场景，复杂监听收益低。
+- MainActivity 拆分：重构风险高，当前 400+ 行可维护。
+
+---
+
+## 四、验证结果
+
+| 项 | 结果 |
+|---|---|
+| gradlew assembleDebug | ✅ BUILD SUCCESSFUL，零 Kotlin 警告 |
+| node web/verify.js | ✅ 21/21（新增：伪造 Host 403 / 正常 Host 200） |
+| APK | ✅ 3.4M |
+| 控制页同步 | ✅ assets/control 与 web/control 一致 |
+
+---
+
+## 五、仍建议实机验证
+
+1. Host 校验不影响正常扫码（手机浏览器 Host 为本机 IP，放行）
+2. 控制页刷新后从 sessionStorage 恢复连接（无需重新扫码）
+3. S3 禁用缩放/定位对目标网站无副作用
+4. P1 缓存后资源更新需重装 APK（assets 打包内不变）

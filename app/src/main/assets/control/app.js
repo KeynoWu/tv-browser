@@ -1,11 +1,16 @@
 (function () {
   'use strict';
 
-  // 从 URL 读取访问令牌（二维码 URL 形如 /?t=TOKEN）
-  var AUTH_TOKEN = '';
+  // 访问令牌：优先 URL（二维码 /?t=TOKEN），其次 sessionStorage（刷新后恢复）
+  // 取出后立即用 history.replaceState 清除地址栏与历史记录中的 token
+  var AUTH_TOKEN = sessionStorage.getItem('tv_token') || '';
   (function () {
     var m = location.search.match(/[?&]t=([^&]+)/);
-    if (m) { AUTH_TOKEN = decodeURIComponent(m[1]); }
+    if (m) {
+      AUTH_TOKEN = decodeURIComponent(m[1]);
+      sessionStorage.setItem('tv_token', AUTH_TOKEN);
+      history.replaceState(null, '', location.pathname);
+    }
   })();
 
   var statusDot = document.getElementById('statusDot');
