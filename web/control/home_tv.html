@@ -8,13 +8,17 @@
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#121212; color:#fff; font-family: sans-serif; overflow:hidden; }
   .wrap { width:100vw; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4vh; }
-  h1 { font-size:6vh; letter-spacing:0.2em; }
-  .sub { font-size:2.6vh; color:#aaa; }
+  h1 { font-size:clamp(44px, 6.5vh, 96px); letter-spacing:0.2em; }
+  .sub { font-size:clamp(22px, 3.2vh, 44px); color:#bbb; }
   .qr-box { text-align:center; }
-  .qr-box img { width:34vh; height:34vh; background:#fff; padding:1vh; border-radius:1vh; }
-  .qr-tip { margin-top:2vh; font-size:3vh; color:#4caf50; }
+  .qr-box img { width:34vh; height:34vh; min-width:280px; min-height:280px; background:#fff; padding:8px; border-radius:12px; }
+  .qr-tip { margin-top:2vh; font-size:clamp(22px, 3.4vh, 44px); color:#4caf50; }
   .sites { display:flex; gap:2vw; margin-top:2vh; }
-  .site { padding:2vh 2.5vw; background:#2a2a2a; border-radius:1vh; font-size:2.8vh; text-decoration:none; color:#fff; outline:none; }
+  .site {
+    padding:2.2vh 2.6vw; background:#2a2a2a; border-radius:12px;
+    font-size:clamp(22px, 3.4vh, 44px); text-decoration:none; color:#fff; outline:none;
+    transition: background-color 0.2s ease;
+  }
   .site:focus, .site:hover { background:#ff4081; color:#fff; }
 </style>
 </head>

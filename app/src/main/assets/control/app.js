@@ -44,12 +44,21 @@
     });
   }
 
+  // 成功反馈：按钮短暂显示对勾（500ms 后还原）
+  function flashOk(btn) {
+    var original = btn.textContent;
+    btn.textContent = '✓';
+    setTimeout(function () { btn.textContent = original; }, 500);
+  }
+
   // 打开网址
   var urlInput = document.getElementById('urlInput');
   document.getElementById('btnOpen').addEventListener('click', function () {
     var v = urlInput.value.trim();
     if (!v) { return; }
-    api('/api/open', { url: v }).catch(function () {
+    api('/api/open', { url: v }).then(function () {
+      flashOk(document.getElementById('btnOpen'));
+    }).catch(function () {
       setStatus('发送失败（未连接或令牌失效）', false);
     });
   });
@@ -62,6 +71,7 @@
     var v = urlInput.value.trim();
     if (!v) { return; }
     api('/api/open', { url: 'https://www.bing.com/search?q=' + encodeURIComponent(v) })
+      .then(function () { flashOk(document.getElementById('btnSearch')); })
       .catch(function () { setStatus('发送失败（未连接或令牌失效）', false); });
   });
 
@@ -108,7 +118,9 @@
   document.getElementById('btnSendText').addEventListener('click', function () {
     var v = document.getElementById('textInput').value;
     if (v) {
-      api('/api/input', { text: v }).catch(function () {
+      api('/api/input', { text: v }).then(function () {
+        flashOk(document.getElementById('btnSendText'));
+      }).catch(function () {
         setStatus('发送失败（未连接或令牌失效）', false);
       });
     }

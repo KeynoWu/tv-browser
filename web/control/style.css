@@ -19,9 +19,10 @@ body { background:#0f0f0f; color:#eee; font-family:-apple-system, "PingFang SC",
 .site:active { background:#333; color:#fff; }
 
 .text-input { display:flex; gap:8px; padding:0 14px 12px; }
-.text-input input { flex:1; min-width:0; height:40px; padding:0 12px; border:1px solid #333; border-radius:8px; background:#1a1a1a; color:#fff; font-size:14px; outline:none; }
+.text-input input { flex:1; min-width:0; height:44px; padding:0 12px; border:1px solid #333; border-radius:8px; background:#1a1a1a; color:#fff; font-size:15px; outline:none; }
 .text-input input:focus { border-color:#4caf50; }
-.text-input button { height:40px; padding:0 14px; border:none; border-radius:8px; background:#4caf50; color:#fff; font-size:14px; font-weight:600; }
+.text-input button { height:44px; padding:0 14px; border:none; border-radius:8px; background:#4caf50; color:#fff; font-size:15px; font-weight:600; transition: opacity 0.15s; }
+.text-input button:active { opacity:.8; }
 
 .remote { display:flex; justify-content:center; align-items:center; gap:24px; padding:10px 14px 20px; }
 .dpad { display:grid; grid-template-columns:repeat(3, 76px); grid-template-rows:repeat(3, 76px); gap:6px; }
@@ -36,4 +37,4 @@ body { background:#0f0f0f; color:#eee; font-family:-apple-system, "PingFang SC",
 .side-keys { display:grid; grid-template-columns:repeat(2, 90px); gap:8px; }
 .key.wide { height:52px; font-size:16px; }
 
-.footer { text-align:center; color:#555; font-size:12px; padding-bottom:10px; }
+.footer { text-align:center; color:#888; font-size:12px; padding-bottom:10px; }

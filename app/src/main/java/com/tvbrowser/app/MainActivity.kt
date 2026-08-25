@@ -142,6 +142,16 @@ class MainActivity : Activity(), RemoteActions {
                 currentTitle = title ?: ""
             }
 
+            // 页面加载进度（顶部细进度条，finished 后隐藏）
+            override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                if (newProgress >= 100) {
+                    binding.pageProgress.visibility = View.INVISIBLE
+                } else {
+                    binding.pageProgress.visibility = View.VISIBLE
+                    binding.pageProgress.progress = newProgress
+                }
+            }
+
             override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
                 showCustomView(view, callback)
             }
@@ -331,15 +341,29 @@ class MainActivity : Activity(), RemoteActions {
     }
 
     private fun showToolbar() {
+        if (toolbarVisible) return
         toolbarVisible = true
+        // 显示当前页面 URL（仅填充一次，避免覆盖用户输入）
+        if (currentUrl.isNotEmpty() && binding.urlInput.text.isNullOrEmpty()) {
+            binding.urlInput.setText(currentUrl)
+        }
         binding.toolbar.visibility = View.VISIBLE
+        binding.toolbar.alpha = 0f
+        binding.toolbar.translationY = binding.toolbar.height.toFloat()
+        binding.toolbar.animate().alpha(1f).translationY(0f).setDuration(200).start()
         binding.urlInput.requestFocus()
     }
 
     private fun hideToolbar() {
+        if (!toolbarVisible) return
         toolbarVisible = false
-        binding.toolbar.visibility = View.GONE
         binding.urlInput.clearFocus()
+        binding.toolbar.animate().alpha(0f).translationY(binding.toolbar.height.toFloat())
+            .setDuration(150)
+            .withEndAction {
+                binding.toolbar.visibility = View.GONE
+            }
+            .start()
     }
 
     // ---- RemoteActions ----
