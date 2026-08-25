@@ -166,6 +166,9 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
         if (q.isEmpty()) {
             return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "missing q")
         }
+        if (q.length > 100) {
+            return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "q too long")
+        }
         val suggestions = fetchBingSuggest(q)
         val json = JSONObject()
         json.put("q", q)

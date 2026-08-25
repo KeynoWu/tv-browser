@@ -127,6 +127,8 @@
   <script>
     (function () {
       'use strict';
+      // 服务端注入的访问令牌（用于 /api/suggest 等需要鉴权的本地接口）
+      var TV_TOKEN = '{token}';
       // ---- 主页站点焦点导航 ----
       var sites = Array.prototype.slice.call(document.querySelectorAll('.sites [tabindex]'));
       var siteIdx = 0;
@@ -190,11 +192,21 @@
         var q = getInput().trim();
         if (!q) { renderSuggest([]); return; }
         var url = '/api/suggest?q=' + encodeURIComponent(q);
-        fetch(url).then(function (r) { return r.json(); })
+        fetch(url, { headers: { 'X-Auth-Token': TV_TOKEN } })
+          .then(function (r) { return r.json(); })
           .then(function (d) {
             renderSuggest(d.suggestions || []);
           })
           .catch(function () { renderSuggest([]); });
+      }
+      // HTML 转义，防止联想词注入（候选文本来自 Bing，须按纯文本渲染）
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
       }
       function renderSuggest(list) {
         suggestList = list;
@@ -203,7 +215,7 @@
           html = '<button class="kb-sg none" tabindex="0">暂无联想（输入拼音）</button>';
         } else {
           for (var i = 0; i < list.length; i++) {
-            html += '<button class="kb-sg" tabindex="0" data-index="' + i + '">' + (i + 1) + '.' + list[i] + '</button>';
+            html += '<button class="kb-sg" tabindex="0" data-index="' + i + '">' + (i + 1) + '.' + escapeHtml(list[i]) + '</button>';
           }
         }
         kbSuggest.innerHTML = html;
@@ -296,6 +308,9 @@
           var sgIdx = suggest.indexOf(document.activeElement);
           var ctlIdx = ctl.indexOf(document.activeElement);
 
+          // 失焦时方向键先回到网格首键，避免从尾部绕行
+          if (zone === 'grid' && cur < 0) { focusKey(0); return; }
+
           switch (e.key) {
             case 'ArrowLeft':
               e.preventDefault();
@@ -349,8 +364,8 @@
               }
               break;
             default:
-              // 遥控器数字键 1-8 直接选候选；字母/数字直输
-              if (mode === 'search' && e.key >= '1' && e.key <= '8') {
+              // 数字键：仅当焦点在候选区时用于选候选（1-8）；否则与字母一样直输，避免无法输入数字
+              if (mode === 'search' && zone === 'suggest' && e.key >= '1' && e.key <= '8') {
                 var n = parseInt(e.key, 10) - 1;
                 if (suggestList[n]) { e.preventDefault(); pickSuggest(n); }
               } else if (/^[a-zA-Z0-9.:/-]$/.test(e.key)) {
