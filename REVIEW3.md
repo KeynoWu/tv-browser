@@ -82,3 +82,38 @@
 - **修复**：移除缓存字段，改为按需实时生成、用后即弃（Bitmap 随方法结束即可被 GC）；serveQr 中的临时 Bitmap/ByteArrayOutputStream 均为局部变量，请求结束即回收。
 - **成本**：仅电视主页加载 /qr.png 时生成，单次约几毫秒（setPixels 已优化），可忽略。
 - **验证**：grep 确认 qrCache 无残留；assembleDebug 零警告；verify.js 21/21。
+
+---
+
+## 六、资源生命周期专项排查（内存/泄漏/竞态）
+
+> 排查范围：全部缓存、静态/单例持有、回调注册、流/IO、Handler/Runnable、Bitmap/byte[]、Activity 引用、WebView 生命周期、NanoHTTPD 线程、JS 桥
+
+### 新修复
+
+**St4 竞态修复：openUrl 的 post 时序 — 新增**
+- 风险：openUrl 在 runOnUiThread 前捕获 wv 引用；若主线程先执行 onDestroy（webView destroy 后置空）再执行 post 任务，wv.loadUrl 会调用已销毁的 WebView 导致崩溃（NanoHTTPD 后台线程与 onDestroy 的竞态窗口）。
+- 修复：post 执行体内重新取 webView（取空则安全跳过）。handleRemoteKey/inputText 原本就在 post 内取用，无此问题。
+
+**St5 渲染进程崩溃处理 — 新增**
+- 风险：WebView 渲染进程崩溃（复杂页面/内存不足，Android 8+）默认拖垮整个应用。
+- 修复：覆写 onRenderProcessGone，区分崩溃/内存过高提示，复位 about:blank，返回 true 阻止应用崩溃。
+
+### 排查确认无问题项
+
+| 类别 | 结论 |
+|---|---|
+| 缓存 | assetCache（控制页 4 文件）与 homeHtmlCached（主页注入结果）为固定小集合（总量小于 50KB、key 集合不变），不增长、无泄漏，可接受常驻 |
+| 静态/单例 | NetUtil 缓存 30s TTL 自动过期；ServerConfig/QrUtil 无状态字段 |
+| 流/IO | assets 流全部 use 自动关闭；ByteArrayInputStream 由 NanoHTTPD 发送后关闭（close 为 no-op）；无文件 IO |
+| 回调注册 | 无 BroadcastReceiver/传感器/NetworkCallback/ContentObserver 注册 |
+| Handler/Runnable | 无延时任务；qrBitmap 用时间戳方案（无 Runnable 泄漏） |
+| Bitmap/byte[] | 二维码实时生成用后即弃；favicon 参数不持有；assetCache 仅小字节数组 |
+| Activity 引用 | webView destroy+置空；remoteServer onDestroy stop；WebViewClient/ChromeClient 匿名对象随 WebView 释放 |
+| JS 桥 | 无 addJavascriptInterface（控制走 HTTP API，无桥对象泄漏） |
+| Web 端 | setInterval 随页面关闭清理；repeatTimer 事件全覆盖停止；sessionStorage 标签页级自动失效 |
+| NanoHTTPD | 每连接一线程（局域网低并发）；Host 校验已挡外部滥用 |
+
+### 低风险接受项
+- RemoteServer 持有 Activity（actions）引用：onDestroy stop 后，处理中的慢请求短时持有（请求级，秒级完成）
+- NanoHTTPD 无连接数上限：同网段恶意客户端可占线程，Host 校验已挡外网，局域网内风险可接受

@@ -118,6 +118,18 @@ class MainActivity : Activity(), RemoteActions {
                     Toast.makeText(this@MainActivity, "加载失败: " + error?.description, Toast.LENGTH_SHORT).show()
                 }
             }
+
+            // 渲染进程崩溃（API 26+）：返回 true 阻止整个应用崩溃，提示并复位页面
+            override fun onRenderProcessGone(view: WebView?, detail: android.webkit.RenderProcessGoneDetail?): Boolean {
+                val msg = if (detail?.didCrash() == true) {
+                    "网页渲染进程崩溃，正在恢复"
+                } else {
+                    "网页占用内存过高，正在恢复"
+                }
+                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
+                view?.loadUrl("about:blank")
+                return true // 已处理，应用不崩溃
+            }
         }
 
         // 拦截下载：当前版本不做文件下载，提示用户
@@ -229,9 +241,12 @@ class MainActivity : Activity(), RemoteActions {
         } else {
             "http://" + trimmed
         }
-        val wv = webView ?: return
         if (isDestroyed || isFinishing) return
-        runOnUiThread { wv.loadUrl(finalUrl) }
+        runOnUiThread {
+            // post 执行时重新取 webView：防止与 onDestroy 竞态（取到已销毁实例导致崩溃）
+            val wv = webView ?: return@runOnUiThread
+            wv.loadUrl(finalUrl)
+        }
     }
 
     private fun loadHome() {
