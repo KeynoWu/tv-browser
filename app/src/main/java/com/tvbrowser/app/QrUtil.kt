@@ -11,13 +11,14 @@ object QrUtil {
         return try {
             val writer = QRCodeWriter()
             val matrix = writer.encode(text, BarcodeFormat.QR_CODE, size, size)
-            val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565)
-            for (x in 0 until size) {
-                for (y in 0 until size) {
-                    bmp.setPixel(x, y, if (matrix[x, y]) Color.BLACK else Color.WHITE)
+            val pixels = IntArray(size * size)
+            for (y in 0 until size) {
+                val row = y * size
+                for (x in 0 until size) {
+                    pixels[row + x] = if (matrix[x, y]) Color.BLACK else Color.WHITE
                 }
             }
-            bmp
+            Bitmap.createBitmap(pixels, size, size, Bitmap.Config.RGB_565)
         } catch (e: Exception) {
             null
         }

@@ -8,23 +8,24 @@ import java.io.InputStream
 
 /**
  * 本地控制服务（端口 8080）。
- * - GET  /                手机控制页（扫码后打开）
- * - GET  /control/...    控制页静态资源
- * - GET  /home            电视端主页（含二维码）
- * - GET  /qr.png          二维码图片
- * - GET  /api/status      电视状态
- * - POST /api/open        {url} 打开网址
- * - POST /api/key         {key} 模拟按键
- * - POST /api/input       {text} 注入文字
+ * - GET  /                手机控制页（扫码后打开；页面本身公开，API 需 token）
+ * - GET  /control/...     控制页静态资源（公开）
+ * - GET  /home            电视端主页（公开，内含注入 token 的二维码 URL）
+ * - GET  /qr.png?t=TOKEN  二维码图片（需 token）
+ * - GET  /api/status      电视状态（需 token）
+ * - POST /api/open        {url} 打开网址（需 token）
+ * - POST /api/key         {key} 模拟按键（需 token）
+ * - POST /api/input       {text} 注入文字（需 token）
  */
-class RemoteServer(port: Int, private val actions: RemoteActions) : NanoHTTPD(port) {
+class RemoteServer(port: Int, private val actions: RemoteActions, private val token: String) : NanoHTTPD(port) {
+
+    companion object {
+        private const val MAX_BODY_SIZE = 64 * 1024L
+    }
 
     init {
-        try {
-            start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
-        } catch (e: Exception) {
-            android.util.Log.e("RemoteServer", "start failed", e)
-        }
+        // 启动失败（端口占用等）直接抛出，由调用方感知并提示
+        start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
     }
 
     override fun serve(session: IHTTPSession): Response {
@@ -36,17 +37,23 @@ class RemoteServer(port: Int, private val actions: RemoteActions) : NanoHTTPD(po
                 uri.startsWith("/control/") ->
                     serveAsset(uri.removePrefix("/control/"))
                 uri == "/home" ->
-                    serveAsset("control/home_tv.html")
+                    serveHome()
                 uri == "/qr.png" ->
-                    serveQr()
+                    if (session.parms["t"] == token) serveQr() else unauthorized()
                 uri == "/api/status" ->
-                    serveStatus()
+                    if (authorized(session)) serveStatus() else unauthorized()
                 uri == "/api/open" ->
-                    handlePost(session) { body -> actions.openUrl(body.optString("url")) }
+                    if (authorized(session)) handlePost(session, "url") { body ->
+                        actions.openUrl(body.optString("url"))
+                    } else unauthorized()
                 uri == "/api/key" ->
-                    handlePost(session) { body -> actions.handleRemoteKey(body.optString("key")) }
+                    if (authorized(session)) handlePost(session, "key") { body ->
+                        actions.handleRemoteKey(body.optString("key"))
+                    } else unauthorized()
                 uri == "/api/input" ->
-                    handlePost(session) { body -> actions.inputText(body.optString("text")) }
+                    if (authorized(session)) handlePost(session, "text") { body ->
+                        actions.inputText(body.optString("text"))
+                    } else unauthorized()
                 uri.startsWith("/api/") ->
                     newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "404 not found")
                 // 控制页的静态资源（style.css/app.js 等）以根路径请求，从 control/ 兜底读取
@@ -55,6 +62,32 @@ class RemoteServer(port: Int, private val actions: RemoteActions) : NanoHTTPD(po
             }
         } catch (e: Exception) {
             newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "error: " + e.message)
+        }
+    }
+
+    /** token 校验：请求头 X-Auth-Token 或查询参数 t */
+    private fun authorized(session: IHTTPSession): Boolean {
+        val header = session.headers["x-auth-token"]
+        if (header == token) return true
+        val parm = session.parms["t"]
+        return parm == token
+    }
+
+    private fun unauthorized(): Response =
+        newFixedLengthResponse(Response.Status.UNAUTHORIZED, "text/plain", "unauthorized")
+
+    private fun serveHome(): Response {
+        val html = readAssetText("control/home_tv.html")
+            ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "asset not found")
+        val injected = html.replace("{token}", token)
+        return newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", injected)
+    }
+
+    private fun readAssetText(path: String): String? {
+        return try {
+            actions.assets().open(path).bufferedReader(Charsets.UTF_8).use { it.readText() }
+        } catch (e: Exception) {
+            null
         }
     }
 
@@ -93,9 +126,28 @@ class RemoteServer(port: Int, private val actions: RemoteActions) : NanoHTTPD(po
         return newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8", json.toString())
     }
 
-    private fun handlePost(session: IHTTPSession, handler: (JSONObject) -> Unit): Response {
+    private fun handlePost(session: IHTTPSession, required: String, handler: (JSONObject) -> Unit): Response {
+        // body 大小限制，防恶意大请求
+        val contentLength = session.headers["content-length"]?.toLongOrNull() ?: 0L
+        if (contentLength > MAX_BODY_SIZE) {
+            return newFixedLengthResponse(Response.Status.PAYLOAD_TOO_LARGE, "text/plain", "body too large")
+        }
         val body = readBody(session)
-        val json = if (body.isBlank()) JSONObject() else JSONObject(body)
+        if (body.isBlank()) {
+            return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "empty body")
+        }
+        val json = try {
+            JSONObject(body)
+        } catch (e: Exception) {
+            return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "invalid json")
+        }
+        if (!json.has(required) || json.optString(required).isBlank()) {
+            return newFixedLengthResponse(
+                Response.Status.BAD_REQUEST,
+                "text/plain",
+                "missing field: " + required
+            )
+        }
         handler(json)
         return newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8", "{\"ok\":true}")
     }

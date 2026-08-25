@@ -14,8 +14,8 @@
   .qr-box img { width:34vh; height:34vh; background:#fff; padding:1vh; border-radius:1vh; }
   .qr-tip { margin-top:2vh; font-size:3vh; color:#4caf50; }
   .sites { display:flex; gap:2vw; margin-top:2vh; }
-  .site { padding:2vh 2.5vw; background:#2a2a2a; border-radius:1vh; font-size:2.8vh; text-decoration:none; color:#fff; }
-  .site:focus, .site:hover { background:#ff4081; outline:none; }
+  .site { padding:2vh 2.5vw; background:#2a2a2a; border-radius:1vh; font-size:2.8vh; text-decoration:none; color:#fff; outline:none; }
+  .site:focus, .site:hover { background:#ff4081; color:#fff; }
 </style>
 </head>
 <body>
@@ -23,16 +23,36 @@
     <h1>电视浏览器</h1>
     <div class="sub">手机扫一扫 · 输网址 · 当遥控器</div>
     <div class="qr-box">
-      <img src="/qr.png" alt="扫码遥控" />
+      <img src="/qr.png?t={token}" alt="扫码遥控" />
       <div class="qr-tip">手机浏览器扫码连接本机</div>
     </div>
-    <div class="sites">
-      <a class="site" href="https://www.bilibili.com">哔哩哔哩</a>
-      <a class="site" href="https://www.iqiyi.com">爱奇艺</a>
-      <a class="site" href="https://v.qq.com">腾讯视频</a>
-      <a class="site" href="https://www.youku.com">优酷</a>
-      <a class="site" href="https://tv.cctv.com/live">央视直播</a>
+    <div class="sites" id="sites">
+      <a class="site" tabindex="0" href="https://www.bilibili.com">哔哩哔哩</a>
+      <a class="site" tabindex="0" href="https://www.iqiyi.com">爱奇艺</a>
+      <a class="site" tabindex="0" href="https://v.qq.com">腾讯视频</a>
+      <a class="site" tabindex="0" href="https://www.youku.com">优酷</a>
+      <a class="site" tabindex="0" href="https://tv.cctv.com/live">央视直播</a>
     </div>
   </div>
+  <script>
+    // 遥控器方向键焦点导航（左右移动，OK/Enter 打开）
+    (function () {
+      var sites = Array.prototype.slice.call(document.querySelectorAll('.site'));
+      if (!sites.length) return;
+      var idx = 0;
+      function focusAt(i) {
+        idx = (i + sites.length) % sites.length;
+        sites[idx].focus();
+      }
+      document.addEventListener('keydown', function (e) {
+        switch (e.key) {
+          case 'ArrowLeft': e.preventDefault(); focusAt(idx - 1); break;
+          case 'ArrowRight': e.preventDefault(); focusAt(idx + 1); break;
+          case 'ArrowUp': case 'ArrowDown': e.preventDefault(); break;
+        }
+      });
+      sites[0].focus();
+    })();
+  </script>
 </body>
 </html>

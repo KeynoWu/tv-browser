@@ -47,7 +47,7 @@
    ./gradlew assembleDebug
    adb install -r app/build/outputs/apk/debug/app-debug.apk
    ```
-2. 打开 App：主页显示二维码（`http://{电视IP}:8080/`）
+2. 打开 App：主页显示二维码（`http://{电视IP}:8080/?t={令牌}`，令牌由 App 首次启动自动生成）
 3. 手机连同一 Wi-Fi，扫二维码 → 浏览器打开遥控页
 4. 输网址 / 点搜索 / 用遥控面板控制电视
 

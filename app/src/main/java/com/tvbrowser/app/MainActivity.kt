@@ -6,19 +6,20 @@ import android.content.Context
 import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.os.Message
 import android.util.Base64
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import com.tvbrowser.app.databinding.ActivityMainBinding
-import java.nio.charset.Charset
 
 class MainActivity : Activity(), RemoteActions {
 
@@ -26,13 +27,23 @@ class MainActivity : Activity(), RemoteActions {
     private var webView: WebView? = null
     private var remoteServer: RemoteServer? = null
     private var toolbarVisible = false
-    private var currentTitle = ""
-    private var currentUrl = ""
+
+    // 主线程维护的状态快照（NanoHTTPD 后台线程只读，避免跨线程调用 WebView）
+    @Volatile private var currentTitle = ""
+    @Volatile private var currentUrl = ""
+    @Volatile private var canGoBack = false
+    @Volatile private var canGoForward = false
     private var backKeyTime = 0L
+
+    // 二维码缓存（IP 或 token 变化时失效）
+    private var qrCacheKey: String? = null
+    private var qrCacheBitmap: Bitmap? = null
 
     // HTML5 视频全屏
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
+
+    private val authToken: String by lazy { ServerConfig.getToken(applicationContext) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,6 +56,11 @@ class MainActivity : Activity(), RemoteActions {
         initToolbar()
         startServer()
         loadHome()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideSystemUi()
     }
 
     private fun hideSystemUi() {
@@ -67,19 +83,40 @@ class MainActivity : Activity(), RemoteActions {
         s.domStorageEnabled = true
         s.mediaPlaybackRequiresUserGesture = false
         s.javaScriptCanOpenWindowsAutomatically = true
+        s.setSupportMultipleWindows(true)
         s.loadWithOverviewMode = true
         s.useWideViewPort = true
         s.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         s.cacheMode = WebSettings.LOAD_DEFAULT
+        s.allowFileAccess = false // 禁止 file:// 本地文件读取（防局域网利用）
         s.userAgentString = s.userAgentString + " TvBrowser/0.1"
 
         wv.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean = false
+
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 currentUrl = url ?: ""
+                refreshNavState(view)
             }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 currentUrl = url ?: ""
+                refreshNavState(view)
+            }
+
+            // 兼容 API 21-22（旧签名）
+            @Suppress("DEPRECATION")
+            override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
+                if (view?.url == failingUrl) {
+                    Toast.makeText(this@MainActivity, "加载失败: " + (description ?: ""), Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            // API 23+ 新签名
+            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                if (request?.isForMainFrame == true) {
+                    Toast.makeText(this@MainActivity, "加载失败: " + error?.description, Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -87,13 +124,41 @@ class MainActivity : Activity(), RemoteActions {
             override fun onReceivedTitle(view: WebView?, title: String?) {
                 currentTitle = title ?: ""
             }
+
             override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
                 showCustomView(view, callback)
             }
+
             override fun onHideCustomView() {
                 hideCustomView()
             }
+
+            override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message?): Boolean {
+                // target=_blank / window.open：复用当前 WebView 打开
+                val transport = resultMsg?.obj as? WebView.WebViewTransport ?: return false
+                val wv = webView ?: return false
+                transport.webView = wv
+                resultMsg?.sendToTarget()
+                return true
+            }
         }
+    }
+
+    private fun refreshNavState(view: WebView?) {
+        val v = view ?: return
+        canGoBack = v.canGoBack()
+        canGoForward = v.canGoForward()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        webView?.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        webView?.onResume()
+        hideSystemUi()
     }
 
     private fun showCustomView(view: View?, callback: WebChromeClient.CustomViewCallback?) {
@@ -146,19 +211,19 @@ class MainActivity : Activity(), RemoteActions {
     override fun openUrl(url: String) {
         val trimmed = url.trim()
         if (trimmed.isEmpty()) return
-        val finalUrl = if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://") &&
-            !trimmed.startsWith("file://") && !trimmed.startsWith("about:")
-        ) {
-            "http://" + trimmed
-        } else {
+        // 协议白名单：仅 http/https（拒绝 file/about 等，防本地文件读取面）
+        val lower = trimmed.lowercase()
+        val finalUrl = if (lower.startsWith("http://") || lower.startsWith("https://")) {
             trimmed
+        } else {
+            "http://" + trimmed
         }
         val wv = webView ?: return
         runOnUiThread { wv.loadUrl(finalUrl) }
     }
 
     private fun loadHome() {
-        openUrl("http://127.0.0.1:8080/home")
+        openUrl(ServerConfig.homeUrl())
     }
 
     private fun showRemoteHint() {
@@ -166,15 +231,19 @@ class MainActivity : Activity(), RemoteActions {
         if (ip == null) {
             Toast.makeText(this, "未连接网络，无法生成二维码", Toast.LENGTH_LONG).show()
         } else {
-            Toast.makeText(this, "手机浏览器打开 http://$ip:8080 扫码遥控", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "手机浏览器打开 " + ServerConfig.controlUrl(ip, authToken), Toast.LENGTH_LONG).show()
         }
     }
 
     private fun startServer() {
         try {
-            remoteServer = RemoteServer(8080, this)
+            remoteServer = RemoteServer(ServerConfig.PORT, this, authToken)
         } catch (e: Exception) {
-            Toast.makeText(this, "控制服务启动失败: " + e.message, Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                this,
+                "控制服务启动失败（端口 " + ServerConfig.PORT + " 可能被占用）: " + e.message,
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
@@ -244,7 +313,13 @@ class MainActivity : Activity(), RemoteActions {
         runOnUiThread {
             val wv = webView ?: return@runOnUiThread
             when (key) {
-                "back" -> if (wv.canGoBack()) wv.goBack()
+                "back" -> {
+                    if (wv.canGoBack()) {
+                        wv.goBack()
+                    } else {
+                        Toast.makeText(this, "已经是第一页", Toast.LENGTH_SHORT).show()
+                    }
+                }
                 "menu" -> toggleToolbar()
                 "home" -> loadHome()
                 "refresh" -> wv.reload()
@@ -296,17 +371,22 @@ class MainActivity : Activity(), RemoteActions {
         return mapOf(
             "url" to currentUrl,
             "title" to currentTitle,
-            "canGoBack" to (webView?.canGoBack() ?: false),
-            "canGoForward" to (webView?.canGoForward() ?: false),
+            "canGoBack" to canGoBack,
+            "canGoForward" to canGoForward,
             "online" to true,
             "ip" to (NetUtil.getLocalIpAddress() ?: ""),
-            "port" to 8080
+            "port" to ServerConfig.PORT
         )
     }
 
     override fun qrBitmap(): Bitmap? {
         val ip = NetUtil.getLocalIpAddress() ?: return null
-        return QrUtil.generate("http://$ip:8080/", 512)
+        val key = "$ip|$authToken"
+        if (key == qrCacheKey) return qrCacheBitmap
+        val bmp = QrUtil.generate(ServerConfig.controlUrl(ip, authToken), 512)
+        qrCacheKey = key
+        qrCacheBitmap = bmp
+        return bmp
     }
 
     override fun assets(): AssetManager = assets
