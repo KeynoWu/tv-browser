@@ -1,0 +1,78 @@
+<svg width="480" height="940" viewBox="0 0 480 940" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, PingFang SC, Microsoft YaHei, sans-serif">
+  <defs>
+    <linearGradient id="primary" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff3d7f"/><stop offset="100%" stop-color="#ff7aa8"/>
+    </linearGradient>
+    <linearGradient id="success" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#34c77b"/><stop offset="100%" stop-color="#5fe0a0"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1d1d27"/><stop offset="100%" stop-color="#16161d"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景 + 微光 -->
+  <rect width="480" height="940" fill="#0b0b10"/>
+  <ellipse cx="240" cy="40" rx="340" ry="150" fill="#ff3d7f" opacity="0.10"/>
+  <ellipse cx="430" cy="900" rx="280" ry="120" fill="#34c77b" opacity="0.06"/>
+
+  <!-- 品牌头部 -->
+  <rect x="28" y="36" width="46" height="46" rx="13" fill="url(#primary)"/>
+  <rect x="40" y="52" width="22" height="14" rx="2.5" fill="none" stroke="#fff" stroke-width="2.4"/>
+  <path d="M46 46l5 5 5-5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+  <text x="88" y="64" fill="#f2f2f5" font-size="20" font-weight="700">电视遥控</text>
+  <text x="88" y="82" fill="#666674" font-size="10" letter-spacing="1.5">TV BROWSER REMOTE</text>
+  <circle cx="428" cy="52" r="6" fill="#555"/>
+  <text x="410" y="74" fill="#9a9aa8" font-size="13" text-anchor="end">未连接电视</text>
+
+  <!-- 访问网址 -->
+  <rect x="20" y="106" width="440" height="88" rx="16" fill="url(#panel)" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+  <text x="36" y="130" fill="#666674" font-size="11" letter-spacing="1.2">访问网址</text>
+  <rect x="36" y="140" width="236" height="42" rx="10" fill="#262634"/>
+  <rect x="282" y="140" width="74" height="42" rx="10" fill="url(#primary)"/>
+  <text x="319" y="166" fill="#fff" font-size="15" font-weight="600" text-anchor="middle">打开</text>
+  <rect x="364" y="140" width="74" height="42" rx="10" fill="url(#primary)"/>
+  <text x="401" y="166" fill="#fff" font-size="15" font-weight="600" text-anchor="middle">搜索</text>
+
+  <!-- 快捷入口 -->
+  <rect x="20" y="210" width="440" height="156" rx="16" fill="url(#panel)" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+  <text x="36" y="234" fill="#666674" font-size="11" letter-spacing="1.2">快捷入口</text>
+  <g>
+    <rect x="36" y="244" width="126" height="46" rx="10" fill="#262634"/><text x="99" y="273" fill="#9a9aa8" font-size="14" text-anchor="middle">B站</text>
+    <rect x="170" y="244" width="126" height="46" rx="10" fill="#262634"/><text x="233" y="273" fill="#9a9aa8" font-size="14" text-anchor="middle">爱奇艺</text>
+    <rect x="304" y="244" width="126" height="46" rx="10" fill="#262634"/><text x="367" y="273" fill="#9a9aa8" font-size="14" text-anchor="middle">腾讯</text>
+    <rect x="36" y="298" width="126" height="46" rx="10" fill="#262634"/><text x="99" y="327" fill="#9a9aa8" font-size="14" text-anchor="middle">优酷</text>
+    <rect x="170" y="298" width="126" height="46" rx="10" fill="#262634"/><text x="233" y="327" fill="#9a9aa8" font-size="14" text-anchor="middle">央视直播</text>
+    <rect x="304" y="298" width="126" height="46" rx="10" fill="#262634" stroke="rgba(255,255,255,0.18)" stroke-dasharray="4 3"/><text x="367" y="327" fill="#666674" font-size="14" text-anchor="middle">编辑</text>
+  </g>
+
+  <!-- 文字输入 -->
+  <rect x="20" y="382" width="440" height="88" rx="16" fill="url(#panel)" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+  <text x="36" y="406" fill="#666674" font-size="11" letter-spacing="1.2">文字输入</text>
+  <rect x="36" y="416" width="336" height="42" rx="10" fill="#262634"/>
+  <rect x="382" y="416" width="56" height="42" rx="10" fill="url(#success)"/>
+  <text x="410" y="442" fill="#fff" font-size="14" font-weight="600" text-anchor="middle">发送</text>
+
+  <!-- 遥控器 -->
+  <rect x="20" y="486" width="440" height="380" rx="16" fill="url(#panel)" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+  <text x="36" y="510" fill="#666674" font-size="11" letter-spacing="1.2">遥控器</text>
+  <!-- 圆形 D-pad -->
+  <g>
+    <circle cx="140" cy="632" r="40" fill="#262634"/><path d="M140 616v32M124 632h32" stroke="#f2f2f5" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="230" cy="542" r="40" fill="#262634"/><path d="M230 526v32M214 542h32" stroke="#f2f2f5" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="320" cy="632" r="40" fill="#262634"/><path d="M320 616v32M304 632h32" stroke="#f2f2f5" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="230" cy="722" r="40" fill="#262634"/><path d="M230 706v32M214 722h32" stroke="#f2f2f5" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="230" cy="632" r="46" fill="url(#primary)"/>
+    <path d="M216 620l10-10 10 10M216 644l10 10 10-10" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="230" y="672" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">OK</text>
+  </g>
+  <!-- 侧键 2x2 -->
+  <g>
+    <rect x="330" y="532" width="104" height="46" rx="14" fill="#262634"/><text x="382" y="560" fill="#f2f2f5" font-size="13" text-anchor="middle">返回</text>
+    <rect x="330" y="588" width="104" height="46" rx="14" fill="#262634"/><text x="382" y="616" fill="#f2f2f5" font-size="13" text-anchor="middle">菜单</text>
+    <rect x="330" y="644" width="104" height="46" rx="14" fill="#262634"/><text x="382" y="672" fill="#f2f2f5" font-size="13" text-anchor="middle">主页</text>
+    <rect x="330" y="700" width="104" height="46" rx="14" fill="#262634"/><text x="382" y="728" fill="#f2f2f5" font-size="13" text-anchor="middle">刷新</text>
+  </g>
+
+  <text x="240" y="902" fill="#666674" font-size="11" text-anchor="middle">长按方向键可连续移动 · 扫二维码即可连接电视</text>
+</svg>

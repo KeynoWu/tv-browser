@@ -3,6 +3,8 @@
 > **给电视用的极简浏览器：Android TV 端 WebView 浏览器 + 手机扫码遥控（无需安装 App）**
 > An open-source TV browser for Android TV - browse on TV, control on phone (scan QR, no app install needed).
 
+![预览](docs/preview.svg)
+
 Android · Kotlin · WebView · NanoHTTPD · ZXing   |   支持 Android 5.0+（API 21+）
 
 ---
