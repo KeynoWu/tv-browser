@@ -86,6 +86,13 @@
     });
   });
 
+  // 触控震动反馈（Android Chrome 支持；用户手势内调用有效）
+  function vibrate(ms) {
+    if (navigator.vibrate) {
+      try { navigator.vibrate(ms); } catch (e) { /* 忽略不支持 */ }
+    }
+  }
+
   // 遥控按键：单击立即发送 + 长按连发
   var repeatTimer = null;
   function startRepeat(key) {
@@ -101,9 +108,10 @@
     b.addEventListener('click', function (e) {
       if (e.detail === 0) { api('/api/key', { key: key }); }
     });
-    // 触摸：立即发送一次 + 长按连发（preventDefault 抑制合成 click）
+    // 触摸：立即发送一次 + 长按连发（preventDefault 抑制合成 click）+ 震动反馈
     b.addEventListener('touchstart', function (e) {
       e.preventDefault();
+      vibrate(15); // 按键触感反馈（短促 15ms）
       api('/api/key', { key: key });
       startRepeat(key);
     });

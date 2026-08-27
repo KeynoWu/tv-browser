@@ -89,7 +89,8 @@ class MainActivity : Activity(), RemoteActions {
         s.setAllowContentAccess(false) // 禁止 content:// 内容访问
         s.setGeolocationEnabled(false) // 禁用定位
         s.setSupportZoom(false) // 禁用缩放（TV 遥控场景无意义）
-        s.userAgentString = s.userAgentString + " TvBrowser/0.1"
+        // PC 桌面 UA（去掉 Mobile 标记）：视频/新闻类网站按桌面版布局呈现
+        s.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 TvBrowser/0.1"
 
         wv.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean = false
