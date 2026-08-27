@@ -9,56 +9,74 @@
 </head>
 <body>
 
-  <header class="status-bar">
-    <span class="status-dot" id="statusDot"></span>
-    <div class="status-info">
-      <div class="status-title" id="statusTitle">未连接电视</div>
-      <div class="status-url" id="statusUrl"></div>
-    </div>
-  </header>
+<!-- SVG 图标库（stroke 风格，圆角统一） -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5M5 10v10h14V10"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"/><path d="M20 20l-4.5-4.5"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+</svg>
 
-  <section class="address-bar">
-    <input type="text" id="urlInput" placeholder="输入网址，如 www.bilibili.com" autocomplete="off" enterkeyhint="go">
-    <button id="btnOpen">打开</button>
-    <button id="btnSearch">搜索</button>
-  </section>
+<header class="status-bar">
+  <span class="status-dot" id="statusDot"></span>
+  <div class="status-info">
+    <div class="status-title" id="statusTitle">未连接电视</div>
+    <div class="status-url" id="statusUrl"></div>
+  </div>
+</header>
 
-  <section class="quick-sites" id="quickSites"></section>
+<section class="address-bar">
+  <input type="text" id="urlInput" placeholder="输入网址，如 www.bilibili.com" autocomplete="off" enterkeyhint="go">
+  <button id="btnOpen" aria-label="打开网址"><svg class="icon"><use href="#i-link"/></svg><span>打开</span></button>
+  <button id="btnSearch" aria-label="搜索"><svg class="icon"><use href="#i-search"/></svg><span>搜索</span></button>
+</section>
 
-  <!-- 快捷站点编辑面板 -->
-  <section class="edit-panel" id="editPanel" hidden>
-    <div class="edit-title">编辑快捷入口</div>
-    <div id="editList"></div>
-    <button class="edit-add" id="editAdd">+ 添加一条</button>
-    <div class="edit-actions">
-      <button class="edit-save" id="editSave">保存</button>
-      <button class="edit-cancel" id="editCancel">取消</button>
-    </div>
-  </section>
+<section class="quick-sites" id="quickSites"></section>
 
-  <section class="text-input">
-    <input type="text" id="textInput" placeholder="文字输入：先让电视页面聚焦输入框，再发送">
-    <button id="btnSendText">发送到电视</button>
-  </section>
+<section class="edit-panel" id="editPanel" hidden>
+  <div class="edit-title">编辑快捷入口</div>
+  <div id="editList"></div>
+  <button class="edit-add" id="editAdd"><svg class="icon"><use href="#i-plus"/></svg>添加一条</button>
+  <div class="edit-actions">
+    <button class="edit-save" id="editSave">保存</button>
+    <button class="edit-cancel" id="editCancel">取消</button>
+  </div>
+</section>
 
-  <section class="remote">
-    <div class="dpad">
-      <button class="key up" data-key="up">▲</button>
-      <button class="key left" data-key="left">◀</button>
-      <button class="key ok" data-key="ok">OK</button>
-      <button class="key right" data-key="right">▶</button>
-      <button class="key down" data-key="down">▼</button>
-    </div>
-    <div class="side-keys">
-      <button class="key wide" data-key="back">返回</button>
-      <button class="key wide" data-key="menu">菜单</button>
-      <button class="key wide" data-key="home">主页</button>
-      <button class="key wide" data-key="refresh">刷新</button>
-    </div>
-  </section>
+<section class="text-input">
+  <input type="text" id="textInput" placeholder="文字输入：先让电视页面聚焦输入框，再发送">
+  <button id="btnSendText" aria-label="发送文字到电视"><svg class="icon"><use href="#i-send"/></svg><span>发送</span></button>
+</section>
 
-  <footer class="footer">长按方向键可连续移动</footer>
+<section class="remote">
+  <div class="dpad">
+    <button class="key up" data-key="up" aria-label="上"><svg class="icon xl"><use href="#i-up"/></svg></button>
+    <button class="key left" data-key="left" aria-label="左"><svg class="icon xl"><use href="#i-left"/></svg></button>
+    <button class="key ok" data-key="ok" aria-label="确认"><svg class="icon xl"><use href="#i-ok"/></svg><span>OK</span></button>
+    <button class="key right" data-key="right" aria-label="右"><svg class="icon xl"><use href="#i-right"/></svg></button>
+    <button class="key down" data-key="down" aria-label="下"><svg class="icon xl"><use href="#i-down"/></svg></button>
+  </div>
+  <div class="side-keys">
+    <button class="key wide" data-key="back" aria-label="返回"><svg class="icon"><use href="#i-back"/></svg>返回</button>
+    <button class="key wide" data-key="menu" aria-label="菜单"><svg class="icon"><use href="#i-menu"/></svg>菜单</button>
+    <button class="key wide" data-key="home" aria-label="主页"><svg class="icon"><use href="#i-home"/></svg>主页</button>
+    <button class="key wide" data-key="refresh" aria-label="刷新"><svg class="icon"><use href="#i-refresh"/></svg>刷新</button>
+  </div>
+</section>
 
-  <script src="app.js"></script>
+<footer class="footer">长按方向键可连续移动</footer>
+
+<script src="app.js"></script>
 </body>
 </html>

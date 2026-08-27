@@ -44,13 +44,20 @@
     });
   }
 
-  // 成功反馈：按钮短暂显示对勾（500ms 后还原；防快速连点的竞态——用 dataset 保存原始文本 + 清理旧定时器）
+  // 成功反馈：按钮短暂显示对勾（500ms 后还原；防快速连点竞态——dataset 保存原文 + 清理定时器）
+  // 兼容带 SVG 图标的按钮：优先改 <span> 文案，避免 textContent 赋值删掉图标
   function flashOk(btn) {
-    var original = btn.dataset.orig || btn.textContent;
-    btn.dataset.orig = original;
-    btn.textContent = '✓';
+    var span = btn.querySelector('span');
+    var original = btn.dataset.orig;
+    if (!original) {
+      original = span ? span.textContent : btn.textContent;
+      btn.dataset.orig = original;
+    }
+    if (span) { span.textContent = '✓'; } else { btn.textContent = '✓'; }
     if (btn._flashTimer) { clearTimeout(btn._flashTimer); }
-    btn._flashTimer = setTimeout(function () { btn.textContent = original; }, 500);
+    btn._flashTimer = setTimeout(function () {
+      if (span) { span.textContent = original; } else { btn.textContent = original; }
+    }, 500);
   }
 
   // 打开网址
