@@ -10,6 +10,9 @@ const CONTROL_DIR = path.join(__dirname, '../app/src/main/assets/control');
 const PORT = 18080;
 const TOKEN = 'TESTTOKEN1234567890';
 
+// 内存态快捷站点（模拟电视端 sites.json）
+let memSites = { sites: [{ name: 'B站', url: 'https://www.bilibili.com' }] };
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
@@ -72,6 +75,22 @@ const server = http.createServer((req, res) => {
     return send(res, 200, 'application/json', JSON.stringify({
       q: q, suggestions: ['西游记', '西游记全集', '西游记女儿国', '西游伏妖篇']
     }));
+  }
+  if (uri === '/api/sites') {
+    if (!tokenOk) return unauthorized();
+    if (req.method === 'GET') {
+      return send(res, 200, 'application/json', JSON.stringify(memSites));
+    }
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      let json;
+      try { json = JSON.parse(body); } catch (e) { return send(res, 400, 'text/plain', 'invalid json'); }
+      if (!Array.isArray(json.sites)) return send(res, 400, 'text/plain', 'invalid sites json');
+      memSites = json; // 保存到内存
+      send(res, 200, 'application/json', '{"ok":true}');
+    });
+    return;
   }
   if (uri === '/api/open' || uri === '/api/key' || uri === '/api/input') {
     if (!tokenOk) return unauthorized();
@@ -158,6 +177,18 @@ async function main() {
   check('GET /api/suggest (无token) -> 401', r.status === 401);
   r = await fetch(base + '/api/suggest', { headers: authHeader });
   check('GET /api/suggest (缺q) -> 400', r.status === 400);
+  r = await fetch(base + '/api/sites', { headers: authHeader });
+  const sites1 = await r.json();
+  check('GET /api/sites -> 200 含站点', r.status === 200 && Array.isArray(sites1.sites));
+  r = await fetch(base + '/api/sites', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader), body: JSON.stringify({ sites: [{ name: '知乎', url: 'https://www.zhihu.com' }] }) });
+  check('POST /api/sites (增删改保存) -> ok', r.status === 200);
+  r = await fetch(base + '/api/sites', { headers: authHeader });
+  const sites2 = await r.json();
+  check('GET /api/sites 反映新列表', sites2.sites.length === 1 && sites2.sites[0].name === '知乎');
+  r = await fetch(base + '/api/sites');
+  check('GET /api/sites (无token) -> 401', r.status === 401);
+  r = await fetch(base + '/api/sites', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader), body: JSON.stringify({}) });
+  check('POST /api/sites (缺sites字段) -> 400', r.status === 400);
 
   console.log('\n[3] API 调用（模拟 app.js 的 fetch 格式，带 token）');
   r = await fetch(base + '/api/open', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader), body: JSON.stringify({ url: 'https://www.iqiyi.com' }) });

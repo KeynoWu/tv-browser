@@ -20,6 +20,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import com.tvbrowser.app.databinding.ActivityMainBinding
+import org.json.JSONObject
+import java.io.File
 
 class MainActivity : Activity(), RemoteActions {
 
@@ -453,4 +455,37 @@ class MainActivity : Activity(), RemoteActions {
     }
 
     override fun assets(): AssetManager = assets
+
+    // ---- 快捷站点管理（存 filesDir/sites.json，多手机共享） ----
+    private val sitesFile: File get() = File(filesDir, "sites.json")
+
+    private val defaultSitesJson = "{\"sites\":[{\"name\":\"B站\",\"url\":\"https://www.bilibili.com\"},{\"name\":\"爱奇艺\",\"url\":\"https://www.iqiyi.com\"},{\"name\":\"腾讯\",\"url\":\"https://v.qq.com\"},{\"name\":\"优酷\",\"url\":\"https://www.youku.com\"},{\"name\":\"央视直播\",\"url\":\"https://tv.cctv.com/live\"},{\"name\":\"芒果\",\"url\":\"https://www.mgtv.com\"}]}"
+
+    @Synchronized
+    override fun getSites(): String {
+        return try {
+            if (sitesFile.exists()) {
+                val text = sitesFile.readText(Charsets.UTF_8)
+                JSONObject(text) // 校验合法，损坏则回退默认
+                text
+            } else {
+                defaultSitesJson
+            }
+        } catch (e: Exception) {
+            defaultSitesJson
+        }
+    }
+
+    @Synchronized
+    override fun saveSites(json: String): Boolean {
+        return try {
+            JSONObject(json).optJSONArray("sites") ?: return false // 必须含 sites 数组
+            val tmp = File(filesDir, "sites.json.tmp")
+            tmp.writeText(json, Charsets.UTF_8)
+            tmp.renameTo(sitesFile) // 原子替换，避免写一半损坏
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
 }

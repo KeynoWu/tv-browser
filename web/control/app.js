@@ -77,14 +77,76 @@
       .catch(function () { setStatus('发送失败（未连接或令牌失效）', false); });
   });
 
-  // 快捷站点（成功同样给 ✓ 反馈）
-  document.querySelectorAll('.site').forEach(function (b) {
-    b.addEventListener('click', function () {
-      api('/api/open', { url: b.getAttribute('data-url') }).then(function () {
-        flashOk(b);
+  // ---- 快捷站点管理（增删改，存电视端 /api/sites） ----
+  var sites = [];
+  var quickBox = document.getElementById('quickSites');
+  var editPanel = document.getElementById('editPanel');
+  var editList = document.getElementById('editList');
+
+  function renderSites() {
+    quickBox.innerHTML = '';
+    sites.forEach(function (s) {
+      var b = document.createElement('button');
+      b.className = 'site';
+      b.textContent = s.name;
+      b.addEventListener('click', function () {
+        api('/api/open', { url: s.url }).then(function () { flashOk(b); });
       });
+      quickBox.appendChild(b);
     });
-  });
+    // 编辑入口
+    var edit = document.createElement('button');
+    edit.className = 'site edit';
+    edit.textContent = '编辑';
+    edit.addEventListener('click', openEdit);
+    quickBox.appendChild(edit);
+  }
+
+  function openEdit() {
+    editList.innerHTML = '';
+    (sites.length ? sites : [{ name: '', url: '' }]).forEach(function (s) { addEditRow(s.name, s.url); });
+    editPanel.hidden = false;
+  }
+  function addEditRow(name, url) {
+    var row = document.createElement('div');
+    row.className = 'edit-row';
+    row.innerHTML = '<input class="edit-name" placeholder="名称，如 B站">' +
+      '<input class="edit-url" placeholder="网址，如 https://www.bilibili.com">' +
+      '<button class="edit-del">删除</button>';
+    row.querySelector('.edit-name').value = name || '';
+    row.querySelector('.edit-url').value = url || '';
+    row.querySelector('.edit-del').addEventListener('click', function () { row.remove(); });
+    editList.appendChild(row);
+  }
+  function collectSites() {
+    var list = [];
+    document.querySelectorAll('.edit-row').forEach(function (row) {
+      var name = row.querySelector('.edit-name').value.trim();
+      var url = row.querySelector('.edit-url').value.trim();
+      if (name || url) { list.push({ name: name || url, url: url }); }
+    });
+    return list;
+  }
+  function saveSites() {
+    var list = collectSites();
+    api('/api/sites', { sites: list })
+      .then(function () {
+        sites = list;
+        editPanel.hidden = true;
+        renderSites();
+      })
+      .catch(function () { setStatus('保存失败（未连接或令牌失效）', false); });
+  }
+  document.getElementById('editAdd').addEventListener('click', function () { addEditRow('', ''); });
+  document.getElementById('editSave').addEventListener('click', saveSites);
+  document.getElementById('editCancel').addEventListener('click', function () { editPanel.hidden = true; });
+
+  function loadSites() {
+    authFetch('/api/sites').then(function (r) { return r.json(); })
+      .then(function (d) { sites = d.sites || []; renderSites(); })
+      .catch(function () { /* 未连接时保留空 */ });
+  }
+  loadSites();
 
   // 触控震动反馈（Android Chrome 支持；用户手势内调用有效）
   function vibrate(ms) {

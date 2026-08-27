@@ -38,3 +38,19 @@ body { background:#0f0f0f; color:#eee; font-family:-apple-system, "PingFang SC",
 .key.wide { height:52px; font-size:16px; }
 
 .footer { text-align:center; color:#888; font-size:12px; padding-bottom:10px; }
+
+/* 快捷站点编辑面板 */
+.site.edit { background:#333; color:#fff; font-size:14px; border:1px dashed #555; }
+.site.edit:active { background:#555; }
+.edit-panel { padding:0 14px 12px; }
+.edit-title { color:#aaa; font-size:14px; margin-bottom:8px; }
+.edit-row { display:flex; gap:8px; margin-bottom:8px; align-items:center; }
+.edit-row input { flex:1; min-width:0; height:40px; padding:0 10px; border:1px solid #333; border-radius:8px; background:#1a1a1a; color:#fff; font-size:14px; outline:none; }
+.edit-row input:focus { border-color:#ff4081; }
+.edit-row .edit-name { max-width:30%; }
+.edit-del { height:40px; padding:0 12px; border:none; border-radius:8px; background:#6b1f1f; color:#fff; font-size:14px; }
+.edit-add { width:100%; height:40px; margin-top:4px; border:1px dashed #444; border-radius:8px; background:transparent; color:#aaa; font-size:14px; }
+.edit-add:active { background:#2a2a2a; }
+.edit-actions { display:flex; gap:8px; margin-top:10px; }
+.edit-save { flex:1; height:44px; border:none; border-radius:8px; background:#4caf50; color:#fff; font-size:15px; font-weight:600; }
+.edit-cancel { flex:1; height:44px; border:none; border-radius:8px; background:#333; color:#fff; font-size:15px; }

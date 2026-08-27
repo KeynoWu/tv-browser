@@ -23,6 +23,12 @@ interface RemoteActions {
     /** 二维码图片（控制页地址） */
     fun qrBitmap(): Bitmap?
 
+    /** 获取快捷站点列表（JSON：{"sites":[{"name","url"}]}），返回合法 JSON */
+    fun getSites(): String
+
+    /** 保存快捷站点列表（全量替换），成功返回 true */
+    fun saveSites(json: String): Boolean
+
     /** assets 访问器（控制页静态资源） */
     fun assets(): AssetManager
 }

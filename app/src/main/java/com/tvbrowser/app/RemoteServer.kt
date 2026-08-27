@@ -63,6 +63,20 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
                     } else unauthorized()
                 uri == "/api/suggest" ->
                     if (authorized(session)) serveSuggest(session) else unauthorized()
+                uri == "/api/sites" ->
+                    if (!authorized(session)) {
+                        unauthorized()
+                    } else if (session.method == Method.GET) {
+                        newFixedLengthResponse(
+                            Response.Status.OK,
+                            "application/json; charset=utf-8",
+                            actions.getSites()
+                        )
+                    } else if (session.method == Method.POST) {
+                        handleSitesPost(session)
+                    } else {
+                        newFixedLengthResponse(Response.Status.METHOD_NOT_ALLOWED, "text/plain", "method not allowed")
+                    }
                 uri.startsWith("/api/") ->
                     newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "404 not found")
                 // 控制页的静态资源（style.css/app.js 等）以根路径请求，从 control/ 兜底读取
@@ -233,6 +247,34 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
         }
         handler(json)
         return newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8", "{\"ok\":true}")
+    }
+
+    /** 保存快捷站点列表：body 须为 {"sites":[{name,url},...]}（复用大小限制与空/格式校验） */
+    private fun handleSitesPost(session: IHTTPSession): Response {
+        val contentLength = session.headers["content-length"]?.toLongOrNull() ?: 0L
+        if (contentLength > MAX_BODY_SIZE) {
+            return newFixedLengthResponse(Response.Status.PAYLOAD_TOO_LARGE, "text/plain", "body too large")
+        }
+        val body = readBody(session)
+        if (body.toByteArray(Charsets.UTF_8).size > MAX_BODY_SIZE) {
+            return newFixedLengthResponse(Response.Status.PAYLOAD_TOO_LARGE, "text/plain", "body too large")
+        }
+        if (body.isBlank()) {
+            return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "empty body")
+        }
+        val sites = try {
+            JSONObject(body).optJSONArray("sites")
+        } catch (e: Exception) {
+            null
+        }
+        if (sites == null) {
+            return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "invalid sites json")
+        }
+        return if (actions.saveSites(body)) {
+            newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8", "{\"ok\":true}")
+        } else {
+            newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "save failed")
+        }
     }
 
     private fun readBody(session: IHTTPSession): String {

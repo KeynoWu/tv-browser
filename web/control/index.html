@@ -23,13 +23,17 @@
     <button id="btnSearch">搜索</button>
   </section>
 
-  <section class="quick-sites">
-    <button class="site" data-url="https://www.bilibili.com">B站</button>
-    <button class="site" data-url="https://www.iqiyi.com">爱奇艺</button>
-    <button class="site" data-url="https://v.qq.com">腾讯</button>
-    <button class="site" data-url="https://www.youku.com">优酷</button>
-    <button class="site" data-url="https://tv.cctv.com/live">央视直播</button>
-    <button class="site" data-url="https://www.mgtv.com">芒果</button>
+  <section class="quick-sites" id="quickSites"></section>
+
+  <!-- 快捷站点编辑面板 -->
+  <section class="edit-panel" id="editPanel" hidden>
+    <div class="edit-title">编辑快捷入口</div>
+    <div id="editList"></div>
+    <button class="edit-add" id="editAdd">+ 添加一条</button>
+    <div class="edit-actions">
+      <button class="edit-save" id="editSave">保存</button>
+      <button class="edit-cancel" id="editCancel">取消</button>
+    </div>
   </section>
 
   <section class="text-input">
