@@ -479,7 +479,12 @@ class MainActivity : Activity(), RemoteActions {
     @Synchronized
     override fun saveSites(json: String): Boolean {
         return try {
-            JSONObject(json).optJSONArray("sites") ?: return false // 必须含 sites 数组
+            val arr = JSONObject(json).optJSONArray("sites") ?: return false // 必须含 sites 数组
+            // 校验每项为对象且含 name/url 字段
+            for (i in 0 until arr.length()) {
+                val item = arr.optJSONObject(i) ?: return false
+                if (!item.has("name") || !item.has("url")) return false
+            }
             val tmp = File(filesDir, "sites.json.tmp")
             tmp.writeText(json, Charsets.UTF_8)
             tmp.renameTo(sitesFile) // 原子替换，避免写一半损坏

@@ -105,6 +105,7 @@
   function openEdit() {
     editList.innerHTML = '';
     (sites.length ? sites : [{ name: '', url: '' }]).forEach(function (s) { addEditRow(s.name, s.url); });
+    quickBox.style.display = 'none'; // 编辑时隐藏快捷区，避免双区挤压
     editPanel.hidden = false;
   }
   function addEditRow(name, url) {
@@ -133,13 +134,17 @@
       .then(function () {
         sites = list;
         editPanel.hidden = true;
+        quickBox.style.display = '';
         renderSites();
       })
       .catch(function () { setStatus('保存失败（未连接或令牌失效）', false); });
   }
   document.getElementById('editAdd').addEventListener('click', function () { addEditRow('', ''); });
   document.getElementById('editSave').addEventListener('click', saveSites);
-  document.getElementById('editCancel').addEventListener('click', function () { editPanel.hidden = true; });
+  document.getElementById('editCancel').addEventListener('click', function () {
+    editPanel.hidden = true;
+    quickBox.style.display = '';
+  });
 
   function loadSites() {
     authFetch('/api/sites').then(function (r) { return r.json(); })

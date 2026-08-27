@@ -90,11 +90,7 @@
       <div class="qr-tip">手机扫码连接本机</div>
     </div>
     <div class="sites" id="sites">
-      <a class="site" tabindex="0" href="https://www.bilibili.com">哔哩哔哩</a>
-      <a class="site" tabindex="0" href="https://www.iqiyi.com">爱奇艺</a>
-      <a class="site" tabindex="0" href="https://v.qq.com">腾讯视频</a>
-      <a class="site" tabindex="0" href="https://www.youku.com">优酷</a>
-      <a class="site" tabindex="0" href="https://tv.cctv.com/live">央视直播</a>
+      <!-- 快捷站点由 /api/sites 动态渲染（与手机控制页共享同一份数据） -->
       <button class="urlbtn search" tabindex="0" id="openSearch">必应搜索</button>
       <button class="urlbtn" tabindex="0" id="openKeyboard">输入网址</button>
     </div>
@@ -129,12 +125,39 @@
       'use strict';
       // 服务端注入的访问令牌（用于 /api/suggest 等需要鉴权的本地接口）
       var TV_TOKEN = '{token}';
-      // ---- 主页站点焦点导航 ----
-      var sites = Array.prototype.slice.call(document.querySelectorAll('.sites [tabindex]'));
+      // ---- 主页站点焦点导航（sites 数组在动态站点加载后重建） ----
+      var sites = [];
       var siteIdx = 0;
+      function refreshSites() {
+        sites = Array.prototype.slice.call(document.querySelectorAll('.sites [tabindex]'));
+        if (siteIdx >= sites.length) siteIdx = 0;
+        if (sites.length) sites[siteIdx].focus();
+      }
       function focusSite(i) {
+        if (!sites.length) return;
         siteIdx = (i + sites.length) % sites.length;
         sites[siteIdx].focus();
+      }
+
+      // 动态加载快捷站点（与手机控制页共享 /api/sites 数据，TV_TOKEN 注入提供鉴权）
+      function loadHomeSites() {
+        fetch('/api/sites', { headers: { 'X-Auth-Token': TV_TOKEN } })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            var box = document.getElementById('sites');
+            var searchBtn = document.getElementById('openSearch');
+            (d.sites || []).forEach(function (s) {
+              if (!s || !s.name || !s.url) return;
+              var a = document.createElement('a');
+              a.className = 'site';
+              a.tabIndex = 0;
+              a.href = s.url;
+              a.textContent = s.name;
+              box.insertBefore(a, searchBtn); // 插在功能按钮之前
+            });
+            refreshSites();
+          })
+          .catch(function () { /* 未连接时保留功能按钮 */ });
       }
 
       // ---- 键盘状态 ----
@@ -390,7 +413,7 @@
       document.getElementById('openSearch').addEventListener('click', function () { showKeyboard('search'); });
 
       buildKeyboard();
-      sites[0].focus();
+      loadHomeSites();
     })();
   </script>
 </body>
