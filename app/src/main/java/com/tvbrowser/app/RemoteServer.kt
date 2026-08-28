@@ -18,6 +18,8 @@ import java.io.InputStream
  * - POST /api/key         {key} 模拟按键（需 token）
  * - POST /api/input       {text} 注入文字（需 token）
  * - GET  /api/suggest     ?q= 搜索联想（需 token）
+ * - POST /api/mouseMode   {on} 鼠标模式开关（需 token）
+ * - POST /api/mouse       {type:move|click|scroll,...} 鼠标动作（需 token）
  */
 class RemoteServer(port: Int, private val actions: RemoteActions, private val token: String) : NanoHTTPD(port) {
 

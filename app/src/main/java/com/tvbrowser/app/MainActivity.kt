@@ -113,8 +113,8 @@ class MainActivity : Activity(), RemoteActions {
               try{
                 el.dispatchEvent(new MouseEvent("mousedown", {clientX:this.x, clientY:this.y, bubbles:true, view:window}));
                 el.dispatchEvent(new MouseEvent("mouseup", {clientX:this.x, clientY:this.y, bubbles:true, view:window}));
+                // 只派发一次合成 click；不再调用 el.click()（否则监听器收到两次，播放按钮会出现开又关）
                 el.dispatchEvent(new MouseEvent("click", {clientX:this.x, clientY:this.y, bubbles:true, view:window}));
-                if(typeof el.click === "function") el.click();
               }catch(e){}
             },
             scroll: function(dy){ window.scrollBy(0, dy); },
@@ -371,7 +371,17 @@ class MainActivity : Activity(), RemoteActions {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        // 鼠标模式：方向键移动光标、OK 点击、返回/菜单退出
+        // 鼠标模式：方向键移动光标、OK 点击、返回/菜单退出（UP 一并拦截，避免孤立 UP 泄漏到 WebView）
+        if (mouseMode) {
+            if (event.action == KeyEvent.ACTION_UP) {
+                when (event.keyCode) {
+                    KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
+                    KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
+                    KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
+                    KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_TAB -> return true
+                }
+            }
+        }
         if (event.action == KeyEvent.ACTION_DOWN && mouseMode) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_DPAD_UP -> { mouseAction("move", 0f, -MOUSE_STEP.toFloat()); return true }

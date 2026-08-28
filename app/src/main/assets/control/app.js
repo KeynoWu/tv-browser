@@ -221,20 +221,24 @@
   var mousePanel = document.getElementById('mousePanel');
   var mouseOn = false;
 
-  function enterMouse() {
+  function enterMouse(persist) {
     mouseOn = true;
     remotePanel.style.display = 'none';
     mousePanel.hidden = false;
+    if (persist !== false) { sessionStorage.setItem('tv_mouse', '1'); }
     api('/api/mouseMode', { on: true });
   }
   function exitMouse() {
     mouseOn = false;
     remotePanel.style.display = '';
     mousePanel.hidden = true;
+    sessionStorage.removeItem('tv_mouse');
     api('/api/mouseMode', { on: false });
   }
-  document.getElementById('btnMouseMode').addEventListener('click', enterMouse);
+  document.getElementById('btnMouseMode').addEventListener('click', function () { enterMouse(); });
   document.getElementById('mouseExit').addEventListener('click', exitMouse);
+  // 刷新控制页后恢复鼠标模式（电视端光标仍在）
+  if (sessionStorage.getItem('tv_mouse') === '1') { enterMouse(false); }
 
   // 触摸板：滑动移光标（系数 2.2 适配电视分辨率）、短按=点击
   var pad = document.getElementById('touchpad');
@@ -246,6 +250,14 @@
     padT = Date.now();
     padMoved = false;
   });
+  var pendX = 0, pendY = 0, moveTimer = null;
+  function flushMove() {
+    moveTimer = null;
+    if (pendX || pendY) {
+      api('/api/mouse', { type: 'move', dx: Math.round(pendX * 2.2), dy: Math.round(pendY * 2.2) });
+      pendX = 0; pendY = 0;
+    }
+  }
   pad.addEventListener('touchmove', function (e) {
     e.preventDefault();
     var dx = e.touches[0].clientX - padX;
@@ -253,7 +265,8 @@
     padX = e.touches[0].clientX;
     padY = e.touches[0].clientY;
     if (Math.abs(dx) + Math.abs(dy) > 2) padMoved = true;
-    api('/api/mouse', { type: 'move', dx: Math.round(dx * 2.2), dy: Math.round(dy * 2.2) });
+    pendX += dx; pendY += dy;
+    if (!moveTimer) { moveTimer = setTimeout(flushMove, 50); } // 50ms 批量合并，避免请求风暴
   });
   pad.addEventListener('touchend', function () {
     if (!padMoved && Date.now() - padT < 250) {
