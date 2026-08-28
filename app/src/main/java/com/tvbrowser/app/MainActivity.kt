@@ -43,6 +43,10 @@ class MainActivity : Activity(), RemoteActions {
 
     private val authToken: String by lazy { ServerConfig.getToken(applicationContext) }
 
+    // 鼠标模式（飞鼠）：光标注入页面，方向键移动、OK 点击、返回退出
+    @Volatile private var mouseMode = false
+    private val MOUSE_STEP = 30
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -71,6 +75,62 @@ class MainActivity : Activity(), RemoteActions {
                 or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
             )
+    }
+
+    // 注入到当前页面的鼠标控制 JS（光标 + elementFromPoint 点击 + 边缘滚动）
+    private val mouseJs = """
+        (function(){
+          if(window.__tvMouse) return;
+          window.__tvMouse = {
+            x: Math.round(window.innerWidth / 2),
+            y: Math.round(window.innerHeight / 2),
+            el: null,
+            init: function(){
+              if(this.el) return;
+              var d = document.createElement("div");
+              d.style.cssText = "position:fixed;z-index:2147483647;pointer-events:none;width:36px;height:36px;" +
+                "left:0;top:0;transform:translate(-50%,-50%);" +
+                "border-radius:50%;background:rgba(255,61,127,0.45);border:3px solid #ff3d7f;" +
+                "box-shadow:0 0 12px rgba(255,61,127,0.6);";
+              document.documentElement.appendChild(d);
+              this.el = d;
+              this.render();
+            },
+            render: function(){ if(this.el) this.el.style.transform = "translate(" + this.x + "px," + this.y + "px) translate(-50%,-50%)"; },
+            move: function(dx,dy){
+              var w = window.innerWidth, h = window.innerHeight;
+              this.x = Math.max(0, Math.min(w, this.x + dx));
+              this.y = Math.max(0, Math.min(h, this.y + dy));
+              this.render();
+              if(this.y < h * 0.08) window.scrollBy(0, -24);
+              else if(this.y > h * 0.92) window.scrollBy(0, 24);
+              if(this.x < w * 0.04) window.scrollBy(-20, 0);
+              else if(this.x > w * 0.96) window.scrollBy(20, 0);
+            },
+            click: function(){
+              var el = document.elementFromPoint(this.x, this.y);
+              if(!el) return;
+              try{
+                el.dispatchEvent(new MouseEvent("mousedown", {clientX:this.x, clientY:this.y, bubbles:true, view:window}));
+                el.dispatchEvent(new MouseEvent("mouseup", {clientX:this.x, clientY:this.y, bubbles:true, view:window}));
+                el.dispatchEvent(new MouseEvent("click", {clientX:this.x, clientY:this.y, bubbles:true, view:window}));
+                if(typeof el.click === "function") el.click();
+              }catch(e){}
+            },
+            scroll: function(dy){ window.scrollBy(0, dy); },
+            destroy: function(){ if(this.el){ this.el.parentNode.removeChild(this.el); this.el = null; } }
+          };
+          window.__tvMouse.init();
+        })();
+    """.trimIndent()
+
+    /** 主线程执行页面 JS（WebView 未就绪/已销毁时安全跳过） */
+    private fun evalPageJs(js: String) {
+        if (isDestroyed || isFinishing) return
+        runOnUiThread {
+            val wv = webView ?: return@runOnUiThread
+            wv.evaluateJavascript(js, null)
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -105,6 +165,10 @@ class MainActivity : Activity(), RemoteActions {
             override fun onPageFinished(view: WebView?, url: String?) {
                 currentUrl = url ?: ""
                 refreshNavState(view)
+                // 鼠标模式开启时，页面跳转后重新注入光标
+                if (mouseMode) {
+                    view?.evaluateJavascript(mouseJs, null)
+                }
             }
 
             // 兼容 API 21-22（旧签名）
@@ -228,6 +292,7 @@ class MainActivity : Activity(), RemoteActions {
         binding.btnRefresh.setOnClickListener { webView?.reload() }
         binding.btnHome.setOnClickListener { loadHome() }
         binding.btnRemote.setOnClickListener { showRemoteHint() }
+        binding.btnMouse.setOnClickListener { toggleMouseMode() }
     }
 
     private fun openUrlFromInput() {
@@ -306,6 +371,22 @@ class MainActivity : Activity(), RemoteActions {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // 鼠标模式：方向键移动光标、OK 点击、返回/菜单退出
+        if (event.action == KeyEvent.ACTION_DOWN && mouseMode) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_DPAD_UP -> { mouseAction("move", 0f, -MOUSE_STEP.toFloat()); return true }
+                KeyEvent.KEYCODE_DPAD_DOWN -> { mouseAction("move", 0f, MOUSE_STEP.toFloat()); return true }
+                KeyEvent.KEYCODE_DPAD_LEFT -> { mouseAction("move", -MOUSE_STEP.toFloat(), 0f); return true }
+                KeyEvent.KEYCODE_DPAD_RIGHT -> { mouseAction("move", MOUSE_STEP.toFloat(), 0f); return true }
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> { mouseAction("click", 0f, 0f); return true }
+                KeyEvent.KEYCODE_BACK -> { setMouseMode(false); return true }
+                KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_TAB -> {
+                    setMouseMode(false)
+                    toggleToolbar()
+                    return true
+                }
+            }
+        }
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_TAB -> {
@@ -370,6 +451,30 @@ class MainActivity : Activity(), RemoteActions {
                 binding.toolbar.visibility = View.GONE
             }
             .start()
+    }
+
+    // ---- 鼠标模式（飞鼠） ----
+    private fun toggleMouseMode() {
+        setMouseMode(!mouseMode)
+    }
+
+    override fun setMouseMode(on: Boolean) {
+        if (isDestroyed || isFinishing || mouseMode == on) return
+        mouseMode = on
+        evalPageJs(if (on) mouseJs else "window.__tvMouse && window.__tvMouse.destroy();")
+        if (on) {
+            hideToolbar()
+            Toast.makeText(this, "鼠标模式：方向键移动 · OK 点击 · 返回退出", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun mouseAction(type: String, p1: Float, p2: Float) {
+        val js = when (type) {
+            "click" -> "window.__tvMouse && window.__tvMouse.click();"
+            "scroll" -> "window.__tvMouse && window.__tvMouse.scroll(" + p2.toInt() + ");"
+            else -> "window.__tvMouse && window.__tvMouse.move(" + p1.toInt() + "," + p2.toInt() + ");"
+        }
+        evalPageJs(js)
     }
 
     // ---- RemoteActions ----

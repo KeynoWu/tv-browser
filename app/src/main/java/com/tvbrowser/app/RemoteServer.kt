@@ -63,6 +63,21 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
                     } else unauthorized()
                 uri == "/api/suggest" ->
                     if (authorized(session)) serveSuggest(session) else unauthorized()
+                uri == "/api/mouseMode" ->
+                    if (authorized(session)) handleJsonPost(session) { body ->
+                        actions.setMouseMode(body.optBoolean("on", false))
+                    } else unauthorized()
+                uri == "/api/mouse" ->
+                    if (authorized(session)) handleJsonPost(session) { body ->
+                        val type = body.optString("type")
+                        val p1 = body.optDouble("dx", 0.0).toFloat()
+                        val p2 = body.optDouble("dy", 0.0).toFloat()
+                        when (type) {
+                            "click" -> actions.mouseAction("click", 0f, 0f)
+                            "scroll" -> actions.mouseAction("scroll", 0f, p2) // dy 传给 p2
+                            else -> actions.mouseAction("move", p1, p2)
+                        }
+                    } else unauthorized()
                 uri == "/api/sites" ->
                     if (!authorized(session)) {
                         unauthorized()
@@ -244,6 +259,28 @@ class RemoteServer(port: Int, private val actions: RemoteActions, private val to
                 "text/plain",
                 "missing field: " + required
             )
+        }
+        handler(json)
+        return newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8", "{\"ok\":true}")
+    }
+
+    /** 通用 POST JSON：大小限制 + 空/格式校验后交给 handler */
+    private fun handleJsonPost(session: IHTTPSession, handler: (JSONObject) -> Unit): Response {
+        val contentLength = session.headers["content-length"]?.toLongOrNull() ?: 0L
+        if (contentLength > MAX_BODY_SIZE) {
+            return newFixedLengthResponse(Response.Status.PAYLOAD_TOO_LARGE, "text/plain", "body too large")
+        }
+        val body = readBody(session)
+        if (body.toByteArray(Charsets.UTF_8).size > MAX_BODY_SIZE) {
+            return newFixedLengthResponse(Response.Status.PAYLOAD_TOO_LARGE, "text/plain", "body too large")
+        }
+        if (body.isBlank()) {
+            return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "empty body")
+        }
+        val json = try {
+            JSONObject(body)
+        } catch (e: Exception) {
+            return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "invalid json")
         }
         handler(json)
         return newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8", "{\"ok\":true}")

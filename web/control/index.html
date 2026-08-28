@@ -27,6 +27,7 @@
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></symbol>
   <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+  <symbol id="i-mouse" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="17" rx="6"/><path d="M12 3v7"/></symbol>
 </svg>
 
 <!-- 品牌头部 -->
@@ -80,8 +81,11 @@
 </section>
 
 <!-- 遥控器 -->
-<section class="panel">
-  <div class="section-title">遥控器</div>
+<section class="panel" id="remotePanel">
+  <div class="section-title row">
+    <span>遥控器</span>
+    <button class="mode-switch" id="btnMouseMode"><svg class="icon"><use href="#i-mouse"/></svg>鼠标模式</button>
+  </div>
   <div class="remote">
     <div class="dpad">
       <button class="key up" data-key="up" aria-label="上"><svg class="icon xl"><use href="#i-up"/></svg></button>
@@ -99,7 +103,21 @@
   </div>
 </section>
 
-<footer class="footer">长按方向键可连续移动 · 扫二维码即可连接电视</footer>
+<!-- 鼠标模式触摸板 -->
+<section class="panel mouse-panel" id="mousePanel" hidden>
+  <div class="section-title row">
+    <span>鼠标模式 · 电视端出现光标</span>
+    <button class="mode-switch active" id="mouseExit"><svg class="icon"><use href="#i-back"/></svg>退出</button>
+  </div>
+  <div class="mouse-body">
+    <div class="touchpad" id="touchpad">
+      <div class="touchpad-hint">滑动移动光标 · 点按点击 · 靠近边缘滚动</div>
+    </div>
+    <div class="scrollbar" id="scrollbar"><div class="sb-thumb"></div></div>
+  </div>
+</section>
+
+<footer class="footer">长按方向键可连续移动 · 鼠标模式提供精确操控 · 扫二维码即可连接电视</footer>
 
 <script src="app.js"></script>
 </body>

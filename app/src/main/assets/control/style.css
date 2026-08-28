@@ -62,6 +62,10 @@ body {
   border:1px solid var(--border); border-radius:var(--radius);
 }
 .section-title { font-size:11px; letter-spacing:0.1em; color:var(--text-3); margin-bottom:10px; }
+.section-title.row { display:flex; align-items:center; justify-content:space-between; }
+.mode-switch { display:flex; align-items:center; gap:5px; height:32px; padding:0 12px; border:1px solid var(--border); border-radius:9px; background:var(--panel-3); color:var(--text-2); font-size:12px; transition: all .15s; }
+.mode-switch:active { background:var(--primary); color:#fff; }
+.mode-switch.active { background:linear-gradient(135deg, var(--primary), var(--primary-2)); color:#fff; border:none; }
 
 /* 地址行 / 文字输入行 */
 .address-row { display:flex; gap:var(--gap); }
@@ -156,3 +160,14 @@ body {
 .key.wide { height:50px; border-radius:14px; flex-direction:row; gap:6px; font-size:13px; }
 
 .footer { text-align:center; color:var(--text-3); font-size:11px; padding:4px 0 14px; }
+
+/* ==== 鼠标模式触摸板 ==== */
+.mouse-body { display:flex; gap:10px; }
+.touchpad {
+  flex:1; min-height:210px; border-radius:var(--radius-sm);
+  background:linear-gradient(160deg, var(--panel-3), var(--panel-2));
+  border:1px solid var(--border); position:relative; overflow:hidden;
+}
+.touchpad-hint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; color:var(--text-3); font-size:13px; line-height:1.8; pointer-events:none; padding:0 20px; }
+.scrollbar { width:26px; border-radius:var(--radius-sm); background:var(--panel-3); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; }
+.sb-thumb { width:8px; height:64px; border-radius:4px; background:var(--primary); opacity:.6; }

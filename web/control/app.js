@@ -216,6 +216,63 @@
     }
   });
 
+  // ---- 鼠标模式（触摸板） ----
+  var remotePanel = document.getElementById('remotePanel');
+  var mousePanel = document.getElementById('mousePanel');
+  var mouseOn = false;
+
+  function enterMouse() {
+    mouseOn = true;
+    remotePanel.style.display = 'none';
+    mousePanel.hidden = false;
+    api('/api/mouseMode', { on: true });
+  }
+  function exitMouse() {
+    mouseOn = false;
+    remotePanel.style.display = '';
+    mousePanel.hidden = true;
+    api('/api/mouseMode', { on: false });
+  }
+  document.getElementById('btnMouseMode').addEventListener('click', enterMouse);
+  document.getElementById('mouseExit').addEventListener('click', exitMouse);
+
+  // 触摸板：滑动移光标（系数 2.2 适配电视分辨率）、短按=点击
+  var pad = document.getElementById('touchpad');
+  var padX = 0, padY = 0, padT = 0, padMoved = false;
+  pad.addEventListener('touchstart', function (e) {
+    e.preventDefault();
+    padX = e.touches[0].clientX;
+    padY = e.touches[0].clientY;
+    padT = Date.now();
+    padMoved = false;
+  });
+  pad.addEventListener('touchmove', function (e) {
+    e.preventDefault();
+    var dx = e.touches[0].clientX - padX;
+    var dy = e.touches[0].clientY - padY;
+    padX = e.touches[0].clientX;
+    padY = e.touches[0].clientY;
+    if (Math.abs(dx) + Math.abs(dy) > 2) padMoved = true;
+    api('/api/mouse', { type: 'move', dx: Math.round(dx * 2.2), dy: Math.round(dy * 2.2) });
+  });
+  pad.addEventListener('touchend', function () {
+    if (!padMoved && Date.now() - padT < 250) {
+      api('/api/mouse', { type: 'click' });
+    }
+  });
+
+  // 滚动条：上下滑动翻页
+  var sb = document.getElementById('scrollbar');
+  var sbY = 0;
+  sb.addEventListener('touchstart', function (e) { e.preventDefault(); sbY = e.touches[0].clientY; });
+  sb.addEventListener('touchmove', function (e) {
+    e.preventDefault();
+    var dy = e.touches[0].clientY - sbY;
+    sbY = e.touches[0].clientY;
+    api('/api/mouse', { type: 'scroll', dy: Math.round(dy * 3) });
+  });
+
+
   // 状态轮询
   function poll() {
     if (!AUTH_TOKEN) {

@@ -29,6 +29,12 @@ interface RemoteActions {
     /** 保存快捷站点列表（全量替换），成功返回 true */
     fun saveSites(json: String): Boolean
 
+    /** 开关鼠标模式（光标 + 方向键移动/OK 点击） */
+    fun setMouseMode(on: Boolean)
+
+    /** 鼠标动作：type=move(dx,dy) / click / scroll(dy) */
+    fun mouseAction(type: String, p1: Float, p2: Float)
+
     /** assets 访问器（控制页静态资源） */
     fun assets(): AssetManager
 }

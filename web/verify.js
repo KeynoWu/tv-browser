@@ -76,6 +76,16 @@ const server = http.createServer((req, res) => {
       q: q, suggestions: ['西游记', '西游记全集', '西游记女儿国', '西游伏妖篇']
     }));
   }
+  if (uri === '/api/mouseMode' || uri === '/api/mouse') {
+    if (!tokenOk) return unauthorized();
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      try { JSON.parse(body); } catch (e) { return send(res, 400, 'text/plain', 'invalid json'); }
+      send(res, 200, 'application/json', '{"ok":true}');
+    });
+    return;
+  }
   if (uri === '/api/sites') {
     if (!tokenOk) return unauthorized();
     if (req.method === 'GET') {
@@ -189,6 +199,14 @@ async function main() {
   check('GET /api/sites (无token) -> 401', r.status === 401);
   r = await fetch(base + '/api/sites', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader), body: JSON.stringify({}) });
   check('POST /api/sites (缺sites字段) -> 400', r.status === 400);
+  r = await fetch(base + '/api/mouseMode', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader), body: JSON.stringify({ on: true }) });
+  check('POST /api/mouseMode {on:true} -> ok', r.status === 200);
+  r = await fetch(base + '/api/mouse', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader), body: JSON.stringify({ type: 'move', dx: 10, dy: 20 }) });
+  check('POST /api/mouse {type:move} -> ok', r.status === 200);
+  r = await fetch(base + '/api/mouse', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader), body: JSON.stringify({ type: 'click' }) });
+  check('POST /api/mouse {type:click} -> ok', r.status === 200);
+  r = await fetch(base + '/api/mouse');
+  check('POST /api/mouse (无token) -> 401', r.status === 401);
 
   console.log('\n[3] API 调用（模拟 app.js 的 fetch 格式，带 token）');
   r = await fetch(base + '/api/open', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader), body: JSON.stringify({ url: 'https://www.iqiyi.com' }) });
