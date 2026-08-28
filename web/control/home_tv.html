@@ -13,7 +13,9 @@
   .qr-box { text-align:center; }
   .qr-box img { width:28vh; height:28vh; min-width:250px; min-height:250px; background:#fff; padding:8px; border-radius:12px; }
   .qr-tip { margin-top:1.5vh; font-size:clamp(19px, 2.9vh, 38px); color:#4caf50; }
-  .sites { display:flex; gap:1.6vw; margin-top:1.5vh; flex-wrap:wrap; justify-content:center; }
+  .qr-hint { margin-top:0.8vh; font-size:clamp(14px, 2vh, 28px); color:#666; }
+  .sites { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:1.2vh 1vw; margin-top:1.2vh; width:86vw; }
+  .home-actions { display:flex; gap:1.8vw; margin-top:1.5vh; }
   .site, .urlbtn {
     padding:1.7vh 2.2vw; background:#2a2a2a; border-radius:12px; border:none;
     font-size:clamp(19px, 3vh, 40px); text-decoration:none; color:#fff; cursor:pointer;
@@ -88,9 +90,12 @@
     <div class="qr-box">
       <img src="/qr.png?t={token}" alt="扫码遥控" />
       <div class="qr-tip">手机扫码连接本机</div>
+      <div class="qr-hint">方向键导航 · OK 确认 · 菜单键工具栏</div>
     </div>
-    <div class="sites" id="sites">
-      <!-- 快捷站点由 /api/sites 动态渲染（与手机控制页共享同一份数据） -->
+    <!-- 快捷站点网格（动态渲染，5 列，遥控器上下左右导航） -->
+    <div class="sites" id="sites"></div>
+    <!-- 功能按钮独立行 -->
+    <div class="home-actions">
       <button class="urlbtn search" tabindex="0" id="openSearch">必应搜索</button>
       <button class="urlbtn" tabindex="0" id="openKeyboard">输入网址</button>
     </div>
@@ -138,6 +143,21 @@
         siteIdx = (i + sites.length) % sites.length;
         sites[siteIdx].focus();
       }
+      // 主页导航：站点网格（5 列，上下行）与功能按钮行（搜索/网址）分离
+      var SITE_COLS = 5; // 与 .sites 的 grid 列数一致
+      var homeMode = 'sites'; // 'sites' 网格 | 'actions' 功能行
+      var actionIdx = 0;
+      var homeActions = [];
+      function refreshActions() {
+        homeActions = Array.prototype.slice.call(document.querySelectorAll('.home-actions [tabindex]'));
+      }
+      function focusAction(i) {
+        if (!homeActions.length) return;
+        if (i < 0 || i >= homeActions.length) { homeMode = 'sites'; focusSite(0); return; }
+        homeMode = 'actions';
+        actionIdx = i;
+        homeActions[i].focus();
+      }
 
       // 动态加载快捷站点（与手机控制页共享 /api/sites 数据，TV_TOKEN 注入提供鉴权）
       function loadHomeSites() {
@@ -145,15 +165,15 @@
           .then(function (r) { return r.json(); })
           .then(function (d) {
             var box = document.getElementById('sites');
-            var searchBtn = document.getElementById('openSearch');
-            (d.sites || []).forEach(function (s) {
+            // 最多显示 10 个（2 行），更多在手机端管理，避免主页溢出
+            (d.sites || []).slice(0, 10).forEach(function (s) {
               if (!s || !s.name || !s.url) return;
               var a = document.createElement('a');
               a.className = 'site';
               a.tabIndex = 0;
               a.href = s.url;
               a.textContent = s.name;
-              box.insertBefore(a, searchBtn); // 插在功能按钮之前
+              box.appendChild(a);
             });
             refreshSites();
           })
@@ -249,6 +269,7 @@
       function pickSuggest(idx) {
         if (!suggestList[idx]) return;
         setInput(suggestList[idx]); // 候选是完整搜索词，整体替换
+        renderSuggest([]); // 选词完成，清空候选防误操作；可继续输入第二词或直接确定
       }
 
       // ---- 键盘显隐 ----
@@ -400,11 +421,27 @@
           }
           return;
         }
-        // ---- 主页模式 ----
-        switch (e.key) {
-          case 'ArrowLeft': e.preventDefault(); focusSite(siteIdx - 1); break;
-          case 'ArrowRight': e.preventDefault(); focusSite(siteIdx + 1); break;
-          case 'ArrowUp': case 'ArrowDown': e.preventDefault(); break;
+        // ---- 主页模式：站点网格（5 列上下行）+ 功能按钮行 ----
+        if (homeMode === 'sites') {
+          switch (e.key) {
+            case 'ArrowLeft': e.preventDefault(); focusSite(siteIdx - 1); break;
+            case 'ArrowRight': e.preventDefault(); focusSite(siteIdx + 1); break;
+            case 'ArrowUp':
+              e.preventDefault();
+              if (siteIdx >= SITE_COLS) focusSite(siteIdx - SITE_COLS);
+              break;
+            case 'ArrowDown':
+              e.preventDefault();
+              if (siteIdx + SITE_COLS < sites.length) { focusSite(siteIdx + SITE_COLS); }
+              else if (homeActions.length) { focusAction(0); }
+              break;
+          }
+        } else { // homeMode === 'actions'
+          switch (e.key) {
+            case 'ArrowLeft': e.preventDefault(); focusAction(actionIdx - 1); break;
+            case 'ArrowRight': e.preventDefault(); focusAction(actionIdx + 1); break;
+            case 'ArrowUp': case 'ArrowDown': e.preventDefault(); homeMode = 'sites'; focusSite(0); break;
+          }
         }
       });
 
@@ -413,6 +450,7 @@
       document.getElementById('openSearch').addEventListener('click', function () { showKeyboard('search'); });
 
       buildKeyboard();
+      refreshActions();
       loadHomeSites();
     })();
   </script>
