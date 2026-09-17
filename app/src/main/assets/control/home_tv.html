@@ -14,7 +14,7 @@
   .qr-box img { width:28vh; height:28vh; min-width:250px; min-height:250px; background:#fff; padding:8px; border-radius:12px; }
   .qr-tip { margin-top:1.5vh; font-size:clamp(19px, 2.9vh, 38px); color:#4caf50; }
   .qr-hint { margin-top:0.8vh; font-size:clamp(14px, 2vh, 28px); color:#666; }
-  .sites { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:1.2vh 1vw; margin-top:1.2vh; width:86vw; }
+  .sites { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:1.2vh 1vw; margin-top:1.2vh; width:86vw; }
   .home-actions { display:flex; gap:1.8vw; margin-top:1.5vh; }
   .site, .urlbtn {
     padding:1.7vh 2.2vw; background:#2a2a2a; border-radius:12px; border:none;
@@ -144,7 +144,7 @@
         sites[siteIdx].focus();
       }
       // 主页导航：站点网格（5 列，上下行）与功能按钮行（搜索/网址）分离
-      var SITE_COLS = 5; // 与 .sites 的 grid 列数一致
+      var SITE_COLS = 4; // 与 .sites 的 grid 列数一致
       var homeMode = 'sites'; // 'sites' 网格 | 'actions' 功能行
       var actionIdx = 0;
       var homeActions = [];
@@ -165,8 +165,8 @@
           .then(function (r) { return r.json(); })
           .then(function (d) {
             var box = document.getElementById('sites');
-            // 最多显示 10 个（2 行），更多在手机端管理，避免主页溢出
-            (d.sites || []).slice(0, 10).forEach(function (s) {
+            // 最多显示 12 个（4 列 3 行），更多在手机端管理，避免主页溢出
+            (d.sites || []).slice(0, 12).forEach(function (s) {
               if (!s || !s.name || !s.url) return;
               var a = document.createElement('a');
               a.className = 'site';

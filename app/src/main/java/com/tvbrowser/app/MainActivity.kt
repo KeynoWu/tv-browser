@@ -574,7 +574,7 @@ class MainActivity : Activity(), RemoteActions {
     // ---- 快捷站点管理（存 filesDir/sites.json，多手机共享） ----
     private val sitesFile: File get() = File(filesDir, "sites.json")
 
-    private val defaultSitesJson = "{\"sites\":[{\"name\":\"B站\",\"url\":\"https://www.bilibili.com\"},{\"name\":\"爱奇艺\",\"url\":\"https://www.iqiyi.com\"},{\"name\":\"腾讯\",\"url\":\"https://v.qq.com\"},{\"name\":\"优酷\",\"url\":\"https://www.youku.com\"},{\"name\":\"央视直播\",\"url\":\"https://tv.cctv.com/live\"},{\"name\":\"芒果\",\"url\":\"https://www.mgtv.com\"}]}"
+    private val defaultSitesJson = "{\"sites\":[{\"name\":\"央视直播\",\"url\":\"https://tv.cctv.com/live/\"},{\"name\":\"央视频\",\"url\":\"https://www.yangshipin.cn/\"},{\"name\":\"湖南卫视\",\"url\":\"https://live.mgtv.com/\"},{\"name\":\"东方卫视\",\"url\":\"https://www.kankanews.com/\"},{\"name\":\"广东卫视\",\"url\":\"https://www.gdtv.cn/\"},{\"name\":\"江苏卫视\",\"url\":\"https://live.jstv.com/\"},{\"name\":\"四川卫视\",\"url\":\"https://www.sctv.com/\"},{\"name\":\"吉林卫视\",\"url\":\"https://www.jlntv.cn/\"},{\"name\":\"B站\",\"url\":\"https://www.bilibili.com\"},{\"name\":\"爱奇艺\",\"url\":\"https://www.iqiyi.com\"},{\"name\":\"腾讯视频\",\"url\":\"https://v.qq.com\"},{\"name\":\"优酷\",\"url\":\"https://www.youku.com\"}]}"
 
     @Synchronized
     override fun getSites(): String {
